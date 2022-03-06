@@ -91,70 +91,6 @@ class TDD:
         dot.edge('-0',str(self.node.idx),color="blue",label=str(self.weight))
         dot.format = 'png'
         return Image(dot.render('output'))
-    
-    def to_array(self,var=[]):
-        split_pos=0
-        key_repeat_num=dict()
-        var_idx=dict()       
-        if var:
-            for idx in var:
-                if not idx.key in var_idx:
-                    var_idx[idx.key]=1
-                else:
-                    var_idx[idx.key]+=1
-        elif self.index_set:
-            for idx in self.index_set:
-                if not idx.key in var_idx:
-                    var_idx[idx.key]=1
-                else:
-                    var_idx[idx.key]+=1
-        if var:
-            split_pos=len(var_idx)-1
-        elif self.key_2_index:
-            split_pos=max(self.key_2_index)
-        else:
-            split_pos=self.node.key
-        orig_order=[]
-        for k in range(split_pos+1):
-            if k in self.key_2_index:
-                if self.key_2_index[k] in var_idx:
-                    key_repeat_num[k] = var_idx[self.key_2_index[k]]
-            else:
-                key_repeat_num[k]=1
-            if k in self.key_2_index:
-                for k1 in range(key_repeat_num[k]):
-                    orig_order.append(self.key_2_index[k])
-                     
-        res = tdd_2_np(self,split_pos,key_repeat_num)
-
-        return res
-    
-    def measure(self):
-        res=[]
-        get_measure_prob(self)
-        if self.node.key==-1:
-            return ''
-        else:
-            l=random.uniform(0,sum(self.node.meas_prob))
-            if l<self.node.meas_prob[0]:
-                temp_tdd=Slicing(self,self.node.key,0)
-                temp_res=temp_tdd.measure()
-                res='0'+temp_res
-            else:
-                temp_tdd=Slicing(self,self.node.key,1)
-                temp_res=temp_tdd.measure()
-                res='1'+temp_res
-#         print(res)
-        return res
-    
-    def sampling(self,k):
-        res=[]
-        for k1 in range(k):
-            temp_res=self.measure()
-            res.append(temp_res )
-        print(res)
-        return res
-        
         
     def __eq__(self,other):
         if self.node==other.node and self.weight==other.weight:
@@ -205,78 +141,101 @@ def to_cnf_one_term(expr,s):
             except:
                 pass
 #     print(c)
-#     if get_int_key(c)==(0,0):
-#         c=0
-#     else:
-    l=[item/c for item in l]
+    try:
+#         if get_int_key(float(c))==(0,0):
+#             c=0
+#             l=[item*0 for item in l]
+#         else:
+            l=[item/c for item in l]
+    except:
+        l=[item/c for item in l]
+#     print(type(c))
 #     print(c,l)
     return c,l
             
+
+
 def to_cnf2(expr,n=5):
-    sm=[str(item) for item in expr.free_symbols]
-#     print(sm)
-    sl=str(expr).split('+')
-#     print(sl)
-    if len(sl)<=1:
-        return [expr]
+    expr=nsimplify(expr,tolerance=1e-6,rational=False)
+    res=[]
+    temp=factor_list(expr)
+#     print('acc:',temp)
+    for item in temp[1]:
+        if item:
+            res.append(item[0])
+    if res:
+        res[0]*=temp[0]
+    else:
+        res=[simplify(0*symbols('x'))]
+#     print(res)
     
-    for k in range(n):
-        x='x'+str(k+1)
-        xn='xn'+str(k+1)
-        if not x in sm and not xn in sm:
-            continue
-        if x in sm and not xn in sm:
-            all_have_x = True
-            for item in sl:
-                if not x in item:
-                    all_have_x=False
-                    break
-            if all_have_x:
-                c1,l1 = to_cnf_one_term(expr,x)
-                new_expr=0
-                for item in l1:
-                    new_expr+=item
-                r=to_cnf2(new_expr,n)
-                r.insert(0,c1*parse_expr(x))
-                return r
-            else:
-                continue
-        if xn in sm and not x in sm:
-            all_have_xn = True
-            for item in sl:
-                if not xn in item:
-                    all_have_xn=False
-                    break
-            if all_have_xn:
-                c1,l1 = to_cnf_one_term(expr,xn)
-                new_expr=0
-                for item in l1:
-                    new_expr+=item
-                r=to_cnf2(new_expr,n)
-                r.insert(0,c1*parse_expr(xn))
-                return r
-            else:
-                continue
-        all_have_x_or_xn = True
-        for item in sl:
-            if not xn in item and not x in item:
-                all_have_x_or_xn=False
-                break
-        if all_have_x_or_xn:
-            c1,l1 = to_cnf_one_term(expr,x)
-            c2,l2 = to_cnf_one_term(expr,xn)
-            if not l1==l2:
-                continue
-            else:
-                new_expr=0
-                for item in l1:
-                    new_expr+=item
-                r=to_cnf2(new_expr,n)
-                r.insert(0,c1*parse_expr(x)+c2*parse_expr(xn))
-                return r
-        else:
-            continue
-    return [expr]
+    return res
+
+# def to_cnf2(expr,n=5):
+#     sm=[str(item) for item in expr.free_symbols]
+# #     print(sm)
+#     sl=str(expr).split('+')
+# #     print(sl)
+#     if len(sl)<=1:
+#         return [expr]
+    
+#     for k in range(n):
+#         x='x'+str(k+1)
+#         xn='xn'+str(k+1)
+#         if not x in sm and not xn in sm:
+#             continue
+#         if x in sm and not xn in sm:
+#             all_have_x = True
+#             for item in sl:
+#                 if not x in item:
+#                     all_have_x=False
+#                     break
+#             if all_have_x:
+#                 c1,l1 = to_cnf_one_term(expr,x)
+#                 new_expr=0
+#                 for item in l1:
+#                     new_expr+=item
+#                 r=to_cnf2(new_expr,n)
+#                 r.insert(0,c1*parse_expr(x))
+#                 return r
+#             else:
+#                 continue
+#         if xn in sm and not x in sm:
+#             all_have_xn = True
+#             for item in sl:
+#                 if not xn in item:
+#                     all_have_xn=False
+#                     break
+#             if all_have_xn:
+#                 c1,l1 = to_cnf_one_term(expr,xn)
+#                 new_expr=0
+#                 for item in l1:
+#                     new_expr+=item
+#                 r=to_cnf2(new_expr,n)
+#                 r.insert(0,c1*parse_expr(xn))
+#                 return r
+#             else:
+#                 continue
+#         all_have_x_or_xn = True
+#         for item in sl:
+#             if not xn in item and not x in item:
+#                 all_have_x_or_xn=False
+#                 break
+#         if all_have_x_or_xn:
+#             c1,l1 = to_cnf_one_term(expr,x)
+#             c2,l2 = to_cnf_one_term(expr,xn)
+#             if not l1==l2:
+#                 continue
+#             else:
+#                 new_expr=0
+#                 for item in l1:
+#                     new_expr+=item
+#                 r=to_cnf2(new_expr,n)
+#                 r.insert(0,c1*parse_expr(x)+c2*parse_expr(xn))
+#                 return r
+#         else:
+#             continue
+#     return [expr]
 
 
 
@@ -353,6 +312,7 @@ def get_node_set(node,node_set=set()):
             if node.successor[k]:
                 node_set = get_node_set(node.successor[k],node_set)
     return node_set
+
 def get_weight(sl):
     if not isinstance(sl,list):
         return sl
@@ -391,6 +351,113 @@ def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
     return res
 
 
+def merge_I(expr):
+    sm=[str(item) for item in expr.free_symbols]
+    if len(sm)==0:
+        return expr
+    
+    sl=str(expr).split('+')
+    if len(sl)<=1:
+        return expr
+    res=0
+    
+    for s in sm:
+        w=0
+        for item in sl:
+            if s in item:
+                w+=parse_expr(item)/parse_expr(s)
+        res+=w*parse_expr(s)
+    return res
+
+def get_a_weight(expr,s):
+    sm=[str(item) for item in expr.free_symbols]
+    if not s in sm:
+        return 0
+    sl=str(expr).split('+')
+    w=0
+    for item in sl:
+        if s in item:
+            w+=simplify(parse_expr(item)/parse_expr(s))
+    print('wwwwwwwww\n',simplify(w))
+    return simplify(w)
+
+def div_expr(expr_t1,expr_t2):
+    sm=[str(item) for item in expr_t1.free_symbols]
+    sm.sort()    
+    w0=get_a_weight(expr_t1,sm[0])
+    w1=get_a_weight(expr_t1,sm[1])
+    w20=get_a_weight(expr_t2,sm[0])
+    w21=get_a_weight(expr_t2,sm[1])
+    return simplify(w0/w20)*parse_expr(sm[0])+simplify(w1/w21)*parse_expr(sm[1])
+
+
+def norm2(expr1,expr2):
+#     print('ccc:',expr1,expr2)
+    res=[]
+    for expr_t1 in expr2:
+        sm=[str(item) for item in expr_t1.free_symbols]
+        sm.sort()
+        if sm:
+            for expr_t2 in expr1:
+                sm2=[str(item) for item in expr_t2.free_symbols]
+                sm2.sort()
+                if sm==sm2:
+                    expr=div_expr(expr_t1,expr_t2)
+                    res.append(expr)
+        else:
+            res.append(expr_t1)
+    if not res:
+        return expr1
+    return res
+
+
+def renorm(tdd):
+    if tdd.node.key==-1:
+        return tdd
+    
+    l=renorm(TDD(tdd.node.successor[0]))
+    r=renorm(TDD(tdd.node.successor[1]))
+    if l.weight==[1]:
+        l.weight=tdd.node.out_weight[0]
+    else:
+        l.weight+=tdd.node.out_weight[0]
+    if r.weight==[1]:        
+        r.weight=tdd.node.out_weight[1]
+    else:
+        r.weight+=tdd.node.out_weight[1]        
+        
+    the_successors=[l,r]
+    
+    return normalize2(tdd.node.key,the_successors)
+
+def normalize2(x,the_successors):
+    """The normalize and reduce procedure"""
+    
+    weigs=[succ.weight for succ in the_successors]
+    print('w:',weigs)
+    weig=[]
+    for item in weigs[0]:
+        if item in weigs[1]:
+            weig.append(item)
+            weigs[0].remove(item)
+            weigs[1].remove(item)
+            
+    if weigs[0] and weigs[1]:
+        for k in weigs[0]:
+            weig.append(k)
+        
+        weigs2=norm2(weigs[0],weigs[1])
+        weigs=[[simplify(symbols('x')/symbols('x'))],weigs2]
+    print('weigs2:',weigs)
+    succ_nodes=[succ.node for succ in the_successors]
+    node=Find_Or_Add_Unique_table(x,weigs,succ_nodes)
+    res=TDD(node)
+    if len(weig)==0:
+        res.weight=[1]
+    else:
+        res.weight=weig
+    return res
+
 def normalize(x,the_successors):
     """The normalize and reduce procedure"""
     global epi
@@ -403,6 +470,7 @@ def normalize(x,the_successors):
         return the_successors[0]
     
     weigs=[succ.weight for succ in the_successors]
+#     print('bbb:',weigs)
     weig=[]
     for item in weigs[0]:
         if item in weigs[1]:
@@ -410,6 +478,13 @@ def normalize(x,the_successors):
             weigs[0].remove(item)
             weigs[1].remove(item)
             
+#     if weigs[0] and weigs[1]:
+#         for k in weigs[0]:
+#             weig.append(k)
+        
+#         weigs2=norm2(weigs[0],weigs[1])
+#         weigs=[[simplify(symbols('x')/symbols('x'))],weigs2]
+        
     succ_nodes=[succ.node for succ in the_successors]
     node=Find_Or_Add_Unique_table(x,weigs,succ_nodes)
     res=TDD(node)
@@ -561,62 +636,7 @@ def np_2_tdd(U,order=[],key_width=True):
         tdd.key_width=the_width
     
     return tdd
-    
-    
-    
-def tdd_2_np(tdd,split_pos=None,key_repeat_num=dict()):
-#     print(split_pos,key_repeat_num)
-    if split_pos==None:
-        split_pos=tdd.node.key
-            
-    if split_pos==-1:
-        return tdd.weight
-    else:
-        the_succs=[]
-        for k in range(tdd.key_width[split_pos]):
-            succ=Slicing2(tdd,split_pos,k)
-            succ.key_width=tdd.key_width
-            temp_res=tdd_2_np(succ,split_pos-1,key_repeat_num)
-            the_succs.append(temp_res)
-        if not split_pos in key_repeat_num:
-            r = 1
-        else:
-            r = key_repeat_num[split_pos]
-            
-        if r==1:
-            res=np.stack(tuple(the_succs), axis=the_succs[0].ndim)
-        else:
-            new_shape=list(the_succs[0].shape)
-            for k in range(r):
-                new_shape.append(tdd.key_width[split_pos])
-            res=np.zeros(new_shape)
-            for k1 in range(tdd.key_width[split_pos]):
-                f='res['
-#                 print(the_succs[0].ndim,r-1)
-                for k2 in range(the_succs[0].ndim):
-                    f+=':,'
-                for k3 in range(r-1):
-                    f+=str(k1)+','
-                f=f[:-1]+']'
-                eval(f)[k1]=the_succs[k1]
-        return res
-    
-    
-def get_measure_prob(tdd):
-    if tdd.node.meas_prob:
-        return tdd
-    if tdd.node.key==-1:
-        tdd.node.meas_prob=[0.5,0.5]
-        return tdd
-    if not tdd.node.succ_num==2:
-        print("Only can be used for binary quantum state")
-        return tdd
-    get_measure_prob(Slicing(tdd,tdd.node.key,0))
-    get_measure_prob(Slicing(tdd,tdd.node.key,1))
-    tdd.node.meas_prob=[0]*2
-    tdd.node.meas_prob[0]=abs(tdd.node.out_weight[0])**2*sum(tdd.node.successor[0].meas_prob)
-    tdd.node.meas_prob[1]=abs(tdd.node.out_weight[1])**2*sum(tdd.node.successor[1].meas_prob)
-    return tdd
+
 
     
 def cont(tdd1,tdd2):
@@ -677,61 +697,7 @@ def cont(tdd1,tdd2):
     tdd.key_width=key_width
 #     print(tdd1.key_width,tdd2.key_width,tdd.key_width)
     return tdd
-    
-def cont2(tdd1,tdd2,cont_var):
-    """cont_var is in the form [[0],[3]]"""
-    key_2_new_key=[[],[]]
-    cont_order=[[],[]]
-    cont_num=len(cont_var[0])
-    num1=0
-    num2=0
-    cont_var[0].append(0)
-    cont_var[1].append(0)
-    for k in range(cont_num):
-        for k1 in range(cont_var[0][k-1],cont_var[0][k]):
-            key_2_new_key[0].append(num1)
-            num1+=1
-            cont_order[0].append(num2)
-            num2+=1
-        
-        for k2 in range(cont_var[1][k-1],cont_var[1][k]):
-            key_2_new_key[1].append(num1)
-            num1+=1
-            cont_order[1].append(num2)
-            num2+=1
-        cont_order[0].append(num2)
-        cont_order[1].append(num2)
-        num2+=1
-        key_2_new_key[0].append('c')
-        key_2_new_key[1].append('c')
-        
-    for k1 in range(cont_var[0][cont_num-1],tdd1.node.key):
-        key_2_new_key[0].append(num1)
-        num1+=1
-        cont_order[0].append(num2)
-        num2+=1
-    for k2 in range(cont_var[1][cont_num-1],tdd2.node.key):
-        key_2_new_key[1].append(num1)
-        num1+=1
-        cont_order[1].append(num2)
-        num2+=1
-    the_max=max(max(cont_order[0],cont_order[1]))
-    cont_order[0]=[the_max-k for k in cont_order[0]]
-    cont_order[1]=[the_max-k for k in cont_order[1]]
-    cont_order[0].append(float('inf'))
-    cont_order[1].append(float('inf'))
-#     print(key_2_new_key,cont_order)
-    tdd=contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num)
-    key_width=dict()
-    for k1 in range(len(key_2_new_key[0])):
-        if not key_2_new_key[0][k1]=='c' and not key_2_new_key[0][k1] ==-1:
-            key_width[key_2_new_key[0][k1]]=tdd1.key_width[k1]
-    for k2 in range(len(key_2_new_key[1])):
-        if not key_2_new_key[1][k2]=='c' and not key_2_new_key[1][k2] ==-1:
-            key_width[key_2_new_key[1][k2]]=tdd2.key_width[k2]             
-   
-    tdd.key_width=key_width
-    return tdd
+
 
 def mul_weight(w1,w2):
     if w1==[0] or w2==[0]:
@@ -740,9 +706,25 @@ def mul_weight(w1,w2):
         return w2
     if w2==[1]:
         return w1
-    return w1+w2
+    return to_cnf2(get_sum_form(w1+w2))
+
+# def mul_weight(w1,w2):
+#     if w1==[0] or w2==[0]:
+#         return [0]
+#     if w1==[1]:
+#         return w2
+#     if w2==[1]:
+#         return w1
+#     return w1+w2
 
 def get_sum_form(sl):
+#     print('aaa2:',sl)
+#     if not sl:
+#         return simplify(0*symbols('x'))
+    
+#     if not type(sl)=='sympy.core.add.Add':
+#         return sl[0]
+#     print('aaa:',sl)
     sl1=[parse_expr(item) for item in str(sl[0]).split('+')]
     res=[]
     for k in range(len(sl)-1):
@@ -758,28 +740,36 @@ def get_sum_form(sl):
     return r
 
 def add_weight(w1,w2):
-    cofactor=[]
-    cw1=copy.copy(w1)
-    cw2=copy.copy(w2)
-#     print(cw1)
-    for k in cw1:
-        if k in cw2:
-            cofactor.append(k)
-            cw1.remove(k)
-            cw2.remove(k)
-    r1=0
-    r2=0
-    if len(cw1)==1:
-        r1=cw1[0]
-    elif len(cw1)>1:
-        r1=get_sum_form(cw1)
+
+    r1=get_sum_form(w1)
+
+    r2=get_sum_form(w2)
+#     print('ddd:',r1,r2)
+    return to_cnf2(r1+r2)
+
+# def add_weight(w1,w2):
+#     cofactor=[]
+#     cw1=copy.copy(w1)
+#     cw2=copy.copy(w2)
+# #     print(cw1)
+#     for k in cw1:
+#         if k in cw2:
+#             cofactor.append(k)
+#             cw1.remove(k)
+#             cw2.remove(k)
+#     r1=0
+#     r2=0
+#     if len(cw1)==1:
+#         r1=cw1[0]
+#     elif len(cw1)>1:
+#         r1=get_sum_form(cw1)
         
-    if len(cw2)==1:
-        r2=cw2[0]
-    elif len(cw2)>1:
-        r2=get_sum_form(cw2)
-    
-    return cofactor+to_cnf2(r1+r2)
+#     if len(cw2)==1:
+#         r2=cw2[0]
+#     elif len(cw2)>1:
+#         r2=get_sum_form(cw2)
+#     print(w1,w2,cofactor)
+#     return cofactor+to_cnf2(r1+r2)
 
 def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
