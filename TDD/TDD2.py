@@ -116,42 +116,7 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
                 succ.append(node.successor[k])
             else:
                 dot.edge(str(node.idx),str(node.successor[k].idx),color=col[k%4],label=label1)
-    return dot        
-
-
-def to_cnf_one_term(expr,s):
-    sm=[str(item) for item in expr.free_symbols]
-#     print(sm)
-    sl=str(expr).split('+')
-#     print(sl)
-    l=[]
-    r=[]
-    if s in sm:
-        for item in sl:
-            if s in item:
-                l.append(parse_expr(item)/parse_expr(s))
-            else:
-                r.append(parse_expr(item))
-    sl0=str(l[0]).split('*')
-    c=1
-    for item in sl0:
-        if not item in sm:
-            try:
-                c*=parse_expr(item)
-            except:
-                pass
-#     print(c)
-    try:
-#         if get_int_key(float(c))==(0,0):
-#             c=0
-#             l=[item*0 for item in l]
-#         else:
-            l=[item/c for item in l]
-    except:
-        l=[item/c for item in l]
-#     print(type(c))
-#     print(c,l)
-    return c,l
+    return dot
             
 
 
@@ -170,74 +135,6 @@ def to_cnf2(expr,n=5):
 #     print(res)
     
     return res
-
-# def to_cnf2(expr,n=5):
-#     sm=[str(item) for item in expr.free_symbols]
-# #     print(sm)
-#     sl=str(expr).split('+')
-# #     print(sl)
-#     if len(sl)<=1:
-#         return [expr]
-    
-#     for k in range(n):
-#         x='x'+str(k+1)
-#         xn='xn'+str(k+1)
-#         if not x in sm and not xn in sm:
-#             continue
-#         if x in sm and not xn in sm:
-#             all_have_x = True
-#             for item in sl:
-#                 if not x in item:
-#                     all_have_x=False
-#                     break
-#             if all_have_x:
-#                 c1,l1 = to_cnf_one_term(expr,x)
-#                 new_expr=0
-#                 for item in l1:
-#                     new_expr+=item
-#                 r=to_cnf2(new_expr,n)
-#                 r.insert(0,c1*parse_expr(x))
-#                 return r
-#             else:
-#                 continue
-#         if xn in sm and not x in sm:
-#             all_have_xn = True
-#             for item in sl:
-#                 if not xn in item:
-#                     all_have_xn=False
-#                     break
-#             if all_have_xn:
-#                 c1,l1 = to_cnf_one_term(expr,xn)
-#                 new_expr=0
-#                 for item in l1:
-#                     new_expr+=item
-#                 r=to_cnf2(new_expr,n)
-#                 r.insert(0,c1*parse_expr(xn))
-#                 return r
-#             else:
-#                 continue
-#         all_have_x_or_xn = True
-#         for item in sl:
-#             if not xn in item and not x in item:
-#                 all_have_x_or_xn=False
-#                 break
-#         if all_have_x_or_xn:
-#             c1,l1 = to_cnf_one_term(expr,x)
-#             c2,l2 = to_cnf_one_term(expr,xn)
-#             if not l1==l2:
-#                 continue
-#             else:
-#                 new_expr=0
-#                 for item in l1:
-#                     new_expr+=item
-#                 r=to_cnf2(new_expr,n)
-#                 r.insert(0,c1*parse_expr(x)+c2*parse_expr(xn))
-#                 return r
-#         else:
-#             continue
-#     return [expr]
-
-
 
         
 def Ini_TDD(index_order=[]):
