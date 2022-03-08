@@ -48,7 +48,7 @@ class Node:
         self.idx = 0
         self.key = key
         self.succ_num=num
-        self.out_weight=[1]*num
+        self.out_weight=[[S.One]]*num
         self.successor=[None]*num
         self.meas_prob=[]
 
@@ -56,7 +56,7 @@ class Node:
 class TDD:
     def __init__(self,node):
         """TDD"""
-        self.weight=[1]
+        self.weight=[S.One]
         
         self.index_set=[]
         
@@ -123,7 +123,7 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
 def to_cnf2(expr,n=5):
     expr=nsimplify(expr,tolerance=1e-6,rational=False)
     res=[]
-    temp=factor_list(expr)
+    temp=factor_list(expr,gaussian=True)
 #     print('acc:',temp)
     for item in temp[1]:
         if item:
@@ -131,9 +131,11 @@ def to_cnf2(expr,n=5):
     if res:
         res[0]*=temp[0]
     else:
-        res=[simplify(0*symbols('x'))]
-#     print(res)
-    
+        res=[S.Zero]
+    print('-------------')
+    print(expr)
+    print(res)
+    print('-------------')
     return res
 
         
@@ -213,9 +215,10 @@ def get_node_set(node,node_set=set()):
 def get_weight(sl):
     if not isinstance(sl,list):
         return sl
-    r=1
+    r=S.One
     for item in sl:
         r*=item
+#     print('aaaaa',sl,r)
     return simplify(r)
 
 def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
@@ -236,6 +239,7 @@ def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
         temp_key.append(succ_nodes[k])
         
     temp_key=tuple(temp_key)
+#     print(weigs,temp_key)
     if temp_key in unique_table:
         return unique_table[temp_key]
     else:
@@ -248,112 +252,43 @@ def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
     return res
 
 
-def merge_I(expr):
-    sm=[str(item) for item in expr.free_symbols]
-    if len(sm)==0:
-        return expr
-    
-    sl=str(expr).split('+')
-    if len(sl)<=1:
-        return expr
-    res=0
-    
-    for s in sm:
-        w=0
-        for item in sl:
-            if s in item:
-                w+=parse_expr(item)/parse_expr(s)
-        res+=w*parse_expr(s)
-    return res
-
-def get_a_weight(expr,s):
-    sm=[str(item) for item in expr.free_symbols]
-    if not s in sm:
-        return 0
-    sl=str(expr).split('+')
-    w=0
-    for item in sl:
-        if s in item:
-            w+=simplify(parse_expr(item)/parse_expr(s))
-    print('wwwwwwwww\n',simplify(w))
-    return simplify(w)
-
 def div_expr(expr_t1,expr_t2):
+#     print(expr_t1,'...',expr_t2)
     sm=[str(item) for item in expr_t1.free_symbols]
     sm.sort()    
-    w0=get_a_weight(expr_t1,sm[0])
-    w1=get_a_weight(expr_t1,sm[1])
-    w20=get_a_weight(expr_t2,sm[0])
-    w21=get_a_weight(expr_t2,sm[1])
+    w0=expr_t1.coeff(sm[0])
+    w1=expr_t1.coeff(sm[1])
+    w20=expr_t2.coeff(sm[0])
+    w21=expr_t2.coeff(sm[1])
     return simplify(w0/w20)*parse_expr(sm[0])+simplify(w1/w21)*parse_expr(sm[1])
 
 
 def norm2(expr1,expr2):
 #     print('ccc:',expr1,expr2)
     res=[]
+    coped=[]
+    left=[]
     for expr_t1 in expr2:
         sm=[str(item) for item in expr_t1.free_symbols]
         sm.sort()
+        has_item=False
         if sm:
             for expr_t2 in expr1:
                 sm2=[str(item) for item in expr_t2.free_symbols]
                 sm2.sort()
-                if sm==sm2:
+                if sm==sm2 and len(sm)==2:
                     expr=div_expr(expr_t1,expr_t2)
                     res.append(expr)
-        else:
+                    coped.append(expr_t2)
+                    has_item=True
+                    break
+        if not has_item:
             res.append(expr_t1)
-    if not res:
-        return expr1
-    return res
-
-
-def renorm(tdd):
-    if tdd.node.key==-1:
-        return tdd
-    
-    l=renorm(TDD(tdd.node.successor[0]))
-    r=renorm(TDD(tdd.node.successor[1]))
-    if l.weight==[1]:
-        l.weight=tdd.node.out_weight[0]
-    else:
-        l.weight+=tdd.node.out_weight[0]
-    if r.weight==[1]:        
-        r.weight=tdd.node.out_weight[1]
-    else:
-        r.weight+=tdd.node.out_weight[1]        
-        
-    the_successors=[l,r]
-    
-    return normalize2(tdd.node.key,the_successors)
-
-def normalize2(x,the_successors):
-    """The normalize and reduce procedure"""
-    
-    weigs=[succ.weight for succ in the_successors]
-    print('w:',weigs)
-    weig=[]
-    for item in weigs[0]:
-        if item in weigs[1]:
-            weig.append(item)
-            weigs[0].remove(item)
-            weigs[1].remove(item)
             
-    if weigs[0] and weigs[1]:
-        for k in weigs[0]:
-            weig.append(k)
-        
-        weigs2=norm2(weigs[0],weigs[1])
-        weigs=[[simplify(symbols('x')/symbols('x'))],weigs2]
-    print('weigs2:',weigs)
-    succ_nodes=[succ.node for succ in the_successors]
-    node=Find_Or_Add_Unique_table(x,weigs,succ_nodes)
-    res=TDD(node)
-    if len(weig)==0:
-        res.weight=[1]
-    else:
-        res.weight=weig
-    return res
+    for expr_t2 in expr1: 
+        if not expr_t2 in coped:
+            left.append(expr_t2)
+    return res,left
 
 def normalize(x,the_successors):
     """The normalize and reduce procedure"""
@@ -374,19 +309,30 @@ def normalize(x,the_successors):
             weig.append(item)
             weigs[0].remove(item)
             weigs[1].remove(item)
+    
+    if weigs[0] and weigs[1]:
+        
+        weigs2,left=norm2(weigs[0],weigs[1])
+        for k in weigs[0]:
+            if not k in left:
+                weig.append(k)
+                
+        if not left:
+            weigs=[[S.One],weigs2]
+        else:
+            weigs=[left,weigs2]
             
-#     if weigs[0] and weigs[1]:
-#         for k in weigs[0]:
-#             weig.append(k)
-        
-#         weigs2=norm2(weigs[0],weigs[1])
-#         weigs=[[simplify(symbols('x')/symbols('x'))],weigs2]
-        
+    if not weigs[0]:
+        weigs[0]=[S.One]
+    if not weigs[1]:
+        weigs[1]=[S.One]    
+    
+#     print('www',weig,weigs)
     succ_nodes=[succ.node for succ in the_successors]
     node=Find_Or_Add_Unique_table(x,weigs,succ_nodes)
     res=TDD(node)
     if len(weig)==0:
-        res.weight=[1]
+        res.weight=[S.One]  
     else:
         res.weight=weig
     return res
@@ -469,9 +415,6 @@ def get_index_2_key(var):
     
 def get_tdd(U,var=[]):
     
-#     if len(var)==0 or not isinstance(var[0],Index):
-#         return np_2_tdd(U,var)
-    
     idx_2_key, key_2_idx = get_index_2_key(var)
     order=[]
     for idx in var:
@@ -480,13 +423,6 @@ def get_tdd(U,var=[]):
     tdd.index_2_key=idx_2_key
     tdd.key_2_index=key_2_idx
     tdd.index_set=var
-    
-#     if not order:
-#         order=list(range(U_dim))
-        
-#     for k in range(max(order)+1):
-#         split_pos=order.index(k)
-#         tdd.key_width[k]=U.shape[split_pos]
         
     return tdd    
     
@@ -500,7 +436,7 @@ def np_2_tdd(U,order=[],key_width=True):
         res=TDD(node)
         for k in range(U_dim):
             U=U[0]
-        res.weight=[simplify(U)]
+        res.weight=[simplify(U*S.One)]
         return res
     
     if not order:
@@ -597,76 +533,28 @@ def cont(tdd1,tdd2):
 
 
 def mul_weight(w1,w2):
-    if w1==[0] or w2==[0]:
-        return [0]
-    if w1==[1]:
+    if w1==[S.Zero] or w2==[S.Zero]:
+        return [S.Zero]
+    if w1==[S.One]:
         return w2
-    if w2==[1]:
+    if w2==[S.One]:
         return w1
     return to_cnf2(get_sum_form(w1+w2))
 
-# def mul_weight(w1,w2):
-#     if w1==[0] or w2==[0]:
-#         return [0]
-#     if w1==[1]:
-#         return w2
-#     if w2==[1]:
-#         return w1
-#     return w1+w2
-
 def get_sum_form(sl):
-#     print('aaa2:',sl)
-#     if not sl:
-#         return simplify(0*symbols('x'))
-    
-#     if not type(sl)=='sympy.core.add.Add':
-#         return sl[0]
-#     print('aaa:',sl)
-    sl1=[parse_expr(item) for item in str(sl[0]).split('+')]
-    res=[]
-    for k in range(len(sl)-1):
-        slt=[parse_expr(item) for item in str(sl[k+1]).split('+')]
-        for item1 in sl1:
-            for item2 in slt:
-                res.append(item1*item2)
-        sl1=res
-        res=[]
-    r=0
-    for k in sl1:
-        r+=k
+    r=S.One
+    for k in sl:
+        r*=k
     return r
+    
 
 def add_weight(w1,w2):
-
+#     print('ddd:',w1,w2)
     r1=get_sum_form(w1)
 
     r2=get_sum_form(w2)
-#     print('ddd:',r1,r2)
+    
     return to_cnf2(r1+r2)
-
-# def add_weight(w1,w2):
-#     cofactor=[]
-#     cw1=copy.copy(w1)
-#     cw2=copy.copy(w2)
-# #     print(cw1)
-#     for k in cw1:
-#         if k in cw2:
-#             cofactor.append(k)
-#             cw1.remove(k)
-#             cw2.remove(k)
-#     r1=0
-#     r2=0
-#     if len(cw1)==1:
-#         r1=cw1[0]
-#     elif len(cw1)>1:
-#         r1=get_sum_form(cw1)
-        
-#     if len(cw2)==1:
-#         r2=cw2[0]
-#     elif len(cw2)>1:
-#         r2=get_sum_form(cw2)
-#     print(w1,w2,cofactor)
-#     return cofactor+to_cnf2(r1+r2)
 
 def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
@@ -677,13 +565,13 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     w2=tdd2.weight
     
     if k1==-1 and k2==-1:
-        if w1==[0]:
+        if w1==[S.Zero]:
             tdd=TDD(tdd1.node)
-            tdd.weight=[0]
+            tdd.weight=[S.Zero]
             return tdd
-        if w2==[0]:
+        if w2==[S.Zero]:
             tdd=TDD(tdd1.node)
-            tdd.weight=[0]
+            tdd.weight=[S.Zero]
             return tdd
         tdd=TDD(tdd1.node)
         tdd.weight=mul_weight(w1,w2)
@@ -693,9 +581,9 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
         return tdd
 
     if k1==-1:
-        if w1==[0]:
+        if w1==[S.Zero]:
             tdd=TDD(tdd1.node)
-            tdd.weight=[0]
+            tdd.weight=[S.Zero]
             return tdd
         if cont_num ==0 and key_2_new_key[1][k2]==k2:
             tdd=TDD(tdd2.node)
@@ -703,17 +591,17 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             return tdd
             
     if k2==-1:
-        if w2==[0]:
+        if w2==[S.Zero]:
             tdd=TDD(tdd2.node)
-            tdd.weight=[0]
+            tdd.weight=[S.Zero]
             return tdd        
         if cont_num ==0 and key_2_new_key[0][k1]==k1:
             tdd=TDD(tdd1.node)
             tdd.weight=mul_weight(w1,w2)
             return tdd
     
-    tdd1.weight=[1]
-    tdd2.weight=[1]
+    tdd1.weight=[S.One]
+    tdd2.weight=[S.One]
     
     temp_key_2_new_key=[]
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0][:(k1+1)]]))
@@ -739,7 +627,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         else:
             tdd=TDD(Find_Or_Add_Unique_table(-1))
-            tdd.weight=[0]
+            tdd.weight=[S.Zero]
             for k in range(tdd1.node.succ_num):
                 res=contract(Slicing(tdd1,k1,k),tdd2,key_2_new_key,cont_order,cont_num-1)           
                 tdd=add(tdd,res)
@@ -757,7 +645,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         else:
             tdd=TDD(Find_Or_Add_Unique_table(-1))
-            tdd.weight=[0]
+            tdd.weight=[S.Zero]
             for k in range(tdd1.node.succ_num):
                 res=contract(Slicing(tdd1,k1,k),Slicing(tdd2,k2,k),key_2_new_key,cont_order,cont_num-1)           
                 tdd=add(tdd,res)
@@ -775,7 +663,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         else:
             tdd=TDD(Find_Or_Add_Unique_table(-1))
-            tdd.weight=[0]
+            tdd.weight=[S.Zero]
             for k in range(tdd2.node.succ_num):
                 res=contract(tdd1,Slicing(tdd2,k2,k),key_2_new_key,cont_order,cont_num-1)           
                 tdd=add(tdd,res)
@@ -833,18 +721,18 @@ def add(tdd1,tdd2):
     k1=tdd1.node.key
     k2=tdd2.node.key
     
-    if tdd1.weight==[0]:
+    if tdd1.weight==[S.Zero]:
         return tdd2.self_copy()
     
-    if tdd2.weight==[0]:
+    if tdd2.weight==[S.Zero]:
         return tdd1.self_copy()
     
     if tdd1.node==tdd2.node:
         weig=add_weight(tdd1.weight,tdd2.weight)
-        if weig==[0]:
+        if weig==[S.Zero]:
             term=Find_Or_Add_Unique_table(-1)
             res=TDD(term)
-            res.weight=[0]
+            res.weight=[S.Zero]
             return res
         else:
             res=TDD(tdd1.node)
