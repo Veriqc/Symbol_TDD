@@ -3,6 +3,7 @@ import copy
 import time
 import random
 from sympy import *
+from sympy import __version__
 from sympy.parsing.sympy_parser import parse_expr
 from graphviz import Digraph
 from IPython.display import Image
@@ -17,6 +18,15 @@ add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
 epi=0.000001
+
+# work around for factor_list gaussianInger problem due to different sympy version
+ver_no = (int(__version__[0]), int(__version__[2]))
+gaussianOption = False
+if ver_no[0] == 1:
+    if ver_no[1] > 5:
+        gaussianOption = True
+elif ver_no[0] > 1:
+    gaussianOption = True
 
 class Index:
     """The index, here idx is used when there is a hyperedge"""
@@ -122,18 +132,18 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
 
 def to_cnf2(expr,n=5):
     expr=nsimplify(expr,tolerance=1e-15,rational=False).evalf(n=6)
+    print('-------------')
+    print(expr)
     res=[]
-    temp=factor_list(expr)
+    temp=factor_list(expr, gaussian=gaussianOption)
 #     print('acc:',temp)
     for item in temp[1]:
         if item:
-            res.append(item[0])
+            res.append(item[0].evalf(n=6))
     if res:
-        res[0]*=temp[0]
+        res[0]*=temp[0].evalf(n=6)
     else:
-        res=[S.Zero]
-    print('-------------')
-    print(expr)
+        res=[temp[0]] #[S.Zero]
     print(res)
     print('-------------')
     return res
