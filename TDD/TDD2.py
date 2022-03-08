@@ -121,9 +121,9 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
 
 
 def to_cnf2(expr,n=5):
-    expr=nsimplify(expr,tolerance=1e-6,rational=False)
+    expr=nsimplify(expr,tolerance=1e-15,rational=False).evalf(n=6)
     res=[]
-    temp=factor_list(expr,gaussian=True)
+    temp=factor_list(expr)
 #     print('acc:',temp)
     for item in temp[1]:
         if item:
