@@ -69,7 +69,10 @@ class normal_form:
         # print(symbol_dic.keys())
 
         if len(using_qubit_list)==0:
-            return normal_form(weight=complex(Bool_Poly),primary_normal_form=[complex(1)],symbol_information=[symbol_dic,using_qubit_list])
+            if complex(Bool_Poly)==0:
+                return normal_form(weight=complex(Bool_Poly),primary_normal_form=[complex(0)],symbol_information=[symbol_dic,using_qubit_list])
+            else:
+                return normal_form(weight=complex(Bool_Poly),primary_normal_form=[complex(1)],symbol_information=[symbol_dic,using_qubit_list])
 
         first_using_qubit=using_qubit_list[0]
 
@@ -87,7 +90,7 @@ class normal_form:
         if 'x%i'%first_using_qubit in symbol_dic:
             have_x=True
             x=symbol_dic['x%i'%first_using_qubit]   
-
+        
         # print(have_x,have_xn)
 
         '''
@@ -186,13 +189,12 @@ class normal_form:
         f0_out=f0.primary_normal_form
         f1_out=f1.primary_normal_form
 
-        if str(weight1)==str(complex(0)):
+        if weight1==complex(0):
             # print('weight1==complex(0)',f0)
             # print(type(f0))
-    
-            if str(f0_out[0])==str(complex(0)):
+            if f0_out[0]==complex(0):
                 return normal_form(weight=complex(0),primary_normal_form=[complex(0)],symbol_information=[symbol_dic,using_qubit_list])
-            elif str(f0_out[0])==str(complex(1)):
+            elif f0_out[0]==complex(1):
                 return normal_form(weight=weight0,primary_normal_form=[xn],symbol_information=[symbol_dic,using_qubit_list])
             else:
                 return normal_form(weight=weight0,primary_normal_form=[xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
@@ -201,7 +203,7 @@ class normal_form:
         print('f1=',f1,type(f1))
 
         if str(f0)==str(f1): 
-            if str(weight1)==str(weight0):
+            if weight1==weight0:
                 return normal_form(weight=weight0,primary_normal_form=[*f0_out],symbol_information=[symbol_dic,using_qubit_list])
             else:
                 if have_xn:
@@ -217,21 +219,181 @@ class normal_form:
         else:
             print('is_not_equal',f1)
             if have_xn:
-                if str(f1_out[0])==str(complex(1)):
-                    if str(f0_out[0])==str(complex(1)):
+                if f1_out[0]==complex(1):
+                    if f0_out[0]==complex(1):
                         return normal_form(weight=weight1,primary_normal_form=[x+weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list])
                     else:
                         return normal_form(weight=weight1,primary_normal_form=[x,'+',weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
                 else:
-                    if str(f0_out[0])==str(complex(1)):
+                    if f0_out[0]==complex(1):
                         return normal_form(weight=weight1,primary_normal_form=[x,*f1_out,'+',weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list])  
                     else:
                         return normal_form(weight=weight1,primary_normal_form=[x,*f1_out,'+',weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])  
-            elif str(f1_out[0])==str(complex(1)):
+            elif f1_out[0]==complex(1):
                 return normal_form(weight=weight1,primary_normal_form=[x],symbol_information=[symbol_dic,using_qubit_list])
             else:
                 # print('a',f1)
                 return normal_form(weight=weight1,primary_normal_form=[x,*f1_out],symbol_information=[symbol_dic,using_qubit_list])
+
+    @staticmethod
+    def normal_form_init_2(Bool_Poly:sympy.core.mul.Mul|sympy.core.add.Add|int|float|complex) ->normal_form:
+        '''
+        The goal of this code is want to turn 'Psudo Boolean fuanction' into 'Normal_form'.
+        
+        input: 
+            Bool_Poly: Psudo Boolean fuanction.
+        output:
+            res: Normal_form 
+                [weight,primary_normal_form,symbol_information]
+
+                primary_normal_form:[x_0+c_0,...,x_n+c_n]
+                symbol_information:[symbol_dic,using_qubit_list]
+        '''
+
+        [symbol_dic,using_qubit_list]=normal_form.find_symbol_information(Bool_Poly)
+        # print(symbol_dic.keys())
+
+        if len(using_qubit_list)==0:
+            return normal_form(weight=complex(Bool_Poly),primary_normal_form=[complex(1)],symbol_information=[symbol_dic,using_qubit_list])
+
+        first_using_qubit=using_qubit_list[0]
+
+        '''
+        Setup first_using_qubit (i) symble xi
+        and find the biggest term weight_i in f.
+        '''
+        x=symbol_dic['x%i'%first_using_qubit]   
+        # weight_i=max(sympy.Poly(Bool_Poly).coeffs(), key=abs)
+
+        weight_i=sympy.Poly(Bool_Poly).coeffs()[0]
+
+        '''
+        Initialized f1 weight and f1(weight1!=0)
+        If first_using_qubit have x, do upper fuction.
+        '''
+     
+        f1=Bool_Poly.xreplace({x:1})
+        f1=[sympy.simplify(f1)]
+        [symbol_dic1,using_qubit_list1]=normal_form.find_symbol_information(f1[0])
+        # print(using_qubit_list1)
+        if len(using_qubit_list1)!=0:
+            # weight1=max(sympy.Poly(f1[0]).coeffs(), key=abs) #the coefficient of the biggest term in f|_{x=1}
+            weight1=sympy.Poly(f1[0]).coeffs()[0]
+        else:
+            # print(f1)
+            # print(using_qubit_list)
+            if len(using_qubit_list)==1:
+                weight1=f1[0]
+                f1=[complex(1)]
+            else:
+                weight1=f1[0]
+        '''
+        Initialized f0 weight and f0(weight1!=0)
+        '''
+        f0=Bool_Poly.xreplace({x:0})
+        f0=[sympy.simplify(f0)]
+        [symbol_dic1,using_qubit_list0]=normal_form.find_symbol_information(f0[0])
+        # print(using_qubit_list1)
+        if len(using_qubit_list0)!=0:
+            # weight0=max(sympy.Poly(f0[0]).coeffs(), key=abs) #the coefficient of the biggest term in f|_{x=0}
+            weight0=sympy.Poly(f0[0]).coeffs()[0]
+
+        else:
+            # print(f1)
+            # print(using_qubit_list)
+            if len(using_qubit_list)==1:
+                weight0=f0[0]
+                f0=[complex(1)]
+            else:
+                weight0=f0[0]
+
+        weight1/=weight_i
+        weight0/=weight_i
+        print('weight_in=',weight_i)
+        print('weight1=',weight1)
+        print('weight0=',weight0)
+
+
+        '''
+        Check weight=0 or not
+        '''   
+        if weight0==complex(0):
+            f0=normal_form.normal_form_init(0)
+        else:
+            f0=normal_form.normal_form_init(sympy.sympify(f0[0]/weight0))
+    
+        if weight1==complex(0):
+            f1=normal_form.normal_form_init(0)
+        else:
+            f1=normal_form.normal_form_init(sympy.sympify(f1[0]/weight1))
+
+        # print('f0=',f0,type(f0))
+        # print('f1=',f1,type(f1))
+
+        '''
+        In this stage, f0,f1 may be normal_form.
+
+        type(weight)=complex,
+        primary_normal_form=[primary_normal_form] 
+            p.s. In this stage, type(primary_normal_form) also may be list.
+
+        symbol_information=[symbol_dic,using_qubit_list] that remove first using qubit.
+
+        Then belowing is return stage. 
+        
+        1. If weight1==complex(0):
+        2. If f1==f0:
+            If weight1==weight0:
+           else: 
+        3. else:
+
+        '''
+
+        
+
+        f1_out=f1.primary_normal_form        
+        f0_out=f0.primary_normal_form
+
+
+        if weight1==complex(0):
+            # print('weight1==complex(0)',f0)
+            # print(type(f0))
+            if f0_out[0]==complex(0):
+                return normal_form(weight=complex(0),primary_normal_form=[complex(0)],symbol_information=[symbol_dic,using_qubit_list])
+            elif f0_out[0]==complex(1):
+                return normal_form(weight=-weight_i*weight0,primary_normal_form=[x-1],symbol_information=[symbol_dic,using_qubit_list])
+            else:
+                return normal_form(weight=-weight_i*weight0,primary_normal_form=[x-1,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+
+        print('f0=',f0,type(f0))
+        print('f1=',f1,type(f1))
+
+        if str(f0)==str(f1): 
+            if weight1==weight0:
+                return normal_form(weight=weight_i*weight1,primary_normal_form=[*f1_out],symbol_information=[symbol_dic,using_qubit_list])
+            else:
+                weight_out=weight_i*weight1**2/(weight1-weight0)
+                const=weight0/(weight1-weight0)
+                if f1_out[0]==complex(1):
+                    return normal_form(weight=weight_out,primary_normal_form=[x+const],symbol_information=[symbol_dic,using_qubit_list])
+                else:
+                    return normal_form(weight=weight_out,primary_normal_form=[x+const,*f1_out],symbol_information=[symbol_dic,using_qubit_list])
+        else:
+            print('is_not_equal f1=',f1)
+            print('is_not_equal f0=',f0)
+            if weight0==complex(0):
+                if f1_out[0]==complex(1):
+                    return normal_form(weight=weight_i*weight1,primary_normal_form=[x],symbol_information=[symbol_dic,using_qubit_list])
+                else:
+                    return normal_form(weight=weight_i*weight1,primary_normal_form=[x,*f1_out],symbol_information=[symbol_dic,using_qubit_list])
+            else:
+                if f1_out[0]==complex(1):
+                    if f0_out[0]==complex(1):
+                        return normal_form(weight=weight_i*(weight1-weight0),primary_normal_form=[x+weight0/(weight1-weight0)],symbol_information=[symbol_dic,using_qubit_list])
+                    else:
+                        return normal_form(weight=weight_i*weight1,primary_normal_form=[x,'-',weight0/weight1,x-1],symbol_information=[symbol_dic,using_qubit_list])
+                else:
+                    return normal_form(weight=weight_i*weight1,primary_normal_form=[x,*f1_out,'-',weight0/weight1,x-1,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
 
     @staticmethod
     def add(nf1,nf2)->normal_form:
