@@ -4,6 +4,42 @@ from numpy import poly, ubyte
 from scipy.fft import fft2
 import sympy
 
+class primary_normal_form:
+
+    def __init__(self,
+                weight: int|complex|float,
+                primary_normal_form: normal_form,
+                symbol_information:list
+                ):
+
+        self.__primary_normal_form: list =primary_normal_form
+        self.__data=primary_normal_form
+        self.__symbol_information=symbol_information
+        '''
+            primary_normal_form:[x_0+c_0*x0_n,...,x_n+c_n*xn_n]
+            data:primary_normal_form
+            symbol_information:[symbol_dic,using_qubit_list]
+        '''
+    @property
+    def weight(self) -> int|complex|float:
+        return self.__weight
+
+    @property
+    def primary_normal_form(self) -> list:
+        return self.__primary_normal_form
+
+    @property
+    def data(self) -> list:
+        return self.__data
+
+    @property
+    def symbol_information(self) -> list:
+        return self.__symbol_information 
+
+
+    def __repr__(self):
+        return str(self.__data)
+
 class normal_form:
     '''
         Introduce:
@@ -11,13 +47,13 @@ class normal_form:
     '''
     def __init__(self,
                 weight: int|complex|float,
-                primary_normal_form: list,
+                primary_normal_form: primary_normal_form,
                 symbol_information:list
                 ):
 
         self.__weight: int =complex(weight)
         self.__primary_normal_form: list =primary_normal_form
-        self.__data=[weight,*primary_normal_form]
+        self.__data=[weight,primary_normal_form]
         self.__symbol_information=symbol_information
         '''
             weight:weight
@@ -70,11 +106,13 @@ class normal_form:
 
         if len(using_qubit_list)==0:
             if complex(Bool_Poly)==0:
-                nf=normal_form(weight=complex(Bool_Poly),primary_normal_form=[complex(0)],symbol_information=[symbol_dic,using_qubit_list])
+                primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[complex(0)],symbol_information=[symbol_dic,using_qubit_list])
+                nf=normal_form(weight=complex(Bool_Poly),primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                 print('nf=',nf)
                 return nf
             else:
-                nf=normal_form(weight=complex(Bool_Poly),primary_normal_form=[complex(1)],symbol_information=[symbol_dic,using_qubit_list])
+                primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[complex(1)],symbol_information=[symbol_dic,using_qubit_list])
+                nf=normal_form(weight=complex(Bool_Poly),primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                 print('nf=',nf)
                 return nf
 
@@ -165,25 +203,14 @@ class normal_form:
         3. else:
 
         '''
-        f1_out=f1.primary_normal_form
-        f0_out=f0.primary_normal_form
-
+        f1_out=f1.primary_normal_form.primary_normal_form
+        f0_out=f0.primary_normal_form.primary_normal_form
+        # weight1_out=f1.weight
+        weight0_out=f0.weight
         print('f0=',f0,type(f0))
         print('f1=',f1,type(f1))
         
-        if f1.weight!=complex(1) and f1.weight!=complex(0):
-            if f1.primary_normal_form[0]==complex(1):
-                f1_out=[f1.weight]
-            else:
-                f1_out=f1.data
-        
-        if f0.weight!=complex(1) and f0.weight!=complex(0):
-            if f0.primary_normal_form[0]==complex(1):
-                f0_out=[f0.weight]
-            else:
-                f0_out=f0.data
 
-        # weight0=f0.weight
 
 
         # print('weight_out=',weight0_out,weight1_out)
@@ -191,60 +218,76 @@ class normal_form:
             # print('weight1==complex(0)',f0)
             # print(type(f0))
             if f0_out[0]==complex(0):
-                nf=normal_form(weight=complex(0),primary_normal_form=[complex(0)],symbol_information=[symbol_dic,using_qubit_list])
+                primary_normal_form_out=primary_normal_form(weight=complex(0),primary_normal_form=[complex(0)],symbol_information=[symbol_dic,using_qubit_list])
+                nf=normal_form(weight=complex(0),primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                 print('nf=',nf)
                 return nf
             elif f0_out[0]==complex(1):
-                nf=normal_form(weight=weight0,primary_normal_form=[xn],symbol_information=[symbol_dic,using_qubit_list])
+                primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[xn],symbol_information=[symbol_dic,using_qubit_list])
+                nf=normal_form(weight=weight0,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                 print(sympy.nfloat)
                 return nf
             else:
-                nf=normal_form(weight=weight0,primary_normal_form=[xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                nf=normal_form(weight=weight0*weight0_out,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                 print('nf=',nf)
                 return nf
-
         
-
         if str(f0)==str(f1): 
             if weight1==weight0:
-                nf=normal_form(weight=weight0,primary_normal_form=[*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                nf=normal_form(weight=weight0*weight0_out,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                 print('nf=',nf)
                 return nf
             else:
                 if f0_out[0]==complex(1):
-                    nf=normal_form(weight=weight1,primary_normal_form=[x+weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list]) 
+                    primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x+weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list]) 
+                    nf=normal_form(weight=weight1,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list]) 
                     print('nf=',nf)
                     return nf
                 else:
-                    nf=normal_form(weight=weight1,primary_normal_form=[x+weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x+weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    nf=normal_form(weight=weight1*weight0_out,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                     print('nf=',nf)
                     return nf
         else:
             print('is_not_equal','f1=',f1,'f0=',f0)
             if f1_out[0]==complex(1):
                 if f0_out[0]==complex(1):
-                    nf=normal_form(weight=weight1,primary_normal_form=[x+weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list])
+                    primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x+weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list])
+                    nf=normal_form(weight=weight1,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                     print('nf=',nf)
                     return nf
                 elif f0_out[0]==complex(0):
-                    nf=normal_form(weight=weight1,primary_normal_form=[x],symbol_information=[symbol_dic,using_qubit_list])
+                    primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x],symbol_information=[symbol_dic,using_qubit_list])
+                    nf=normal_form(weight=weight1,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                     print('nf=',nf)
                     return nf
                 else:
-                    nf=normal_form(weight=weight1,primary_normal_form=[x,'+',weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    if weight0_out==complex(1):
+                        primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x,'+',weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    else:
+                        primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x,'+',weight0_out,weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    nf=normal_form(weight=weight1,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                     print('nf=',nf)
                     return nf
             else:
                 if f0_out[0]==complex(1):
-                    nf=normal_form(weight=weight1,primary_normal_form=[x,*f1_out,'+',weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list])
+                    primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x,*f1_out,'+',weight0/weight1*xn],symbol_information=[symbol_dic,using_qubit_list])
+                    nf=normal_form(weight=weight1,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                     print('nf=',nf)
                     return nf  
                 elif f0_out[0]==complex(0):
-                    nf=normal_form(weight=weight1,primary_normal_form=[x,*f1_out],symbol_information=[symbol_dic,using_qubit_list]) 
+                    primary_normal_form_out=primary_normal_form(weight=complex(1),primary_normal_form=[x,*f1_out],symbol_information=[symbol_dic,using_qubit_list]) 
+                    nf=normal_form(weight=weight1,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list]) 
                     print('nf=',nf)
                     return nf 
                 else:
-                    nf=normal_form(weight=weight1,primary_normal_form=[x,*f1_out,'+',weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    if weight0_out==complex(1):
+                        primary_normal_form_out=primary_normal_form(weight=weight1,primary_normal_form=[x,*f1_out,'+',weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    else:
+                        primary_normal_form_out=primary_normal_form(weight=weight1,primary_normal_form=[x,*f1_out,'+',weight0_out,weight0/weight1*xn,*f0_out],symbol_information=[symbol_dic,using_qubit_list])
+                    nf=normal_form(weight=weight1,primary_normal_form=primary_normal_form_out,symbol_information=[symbol_dic,using_qubit_list])
                     print('nf=',nf)
                     return nf  
             
@@ -576,5 +619,3 @@ class normal_form:
 
         #     return nf
 
-
-    
