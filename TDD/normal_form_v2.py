@@ -1,4 +1,4 @@
-from unittest import FunctionTestCase
+from __future__ import annotations
 import sympy as sp
 
 def generate_qubit_symbols(x_index):
@@ -17,7 +17,8 @@ class PBF():
         return str(self.expr)
         
     def get_coeffs_poly(self):
-        return sp.Poly(self.expr).coeffs()
+
+        return [self.expr] if self.is_constant() else sp.Poly(self.expr).coeffs()
 
     def get_qubit_idx_set(self):
         sym_set = self.expr.free_symbols
@@ -48,6 +49,8 @@ class NormalForm():
             pbf_weight = pbf.expr
         elif len(pbf.expr.args) > 0:
             pbf_weight = pbf.expr.args[0]
+            while not pbf_weight.is_constant():
+                pbf_weight=NormalForm(PBF(pbf_weight)).weight
         else:
             pbf_weight = sp.Integer(1)
         
@@ -66,6 +69,11 @@ class NormalForm():
     
     def is_constant(self):
         return self.pbf.is_constant()
+
+    def is_zero(self):
+        
+        return self.weight==0 or self.pbf.expr.is_zero
+    
     
     def xreplace(self, rule, x_index):
         new_qubit_idx_set = self.qubit_idx_set.copy()
@@ -76,6 +84,7 @@ class NormalForm():
         new_pbf = PBF(self.pbf.xreplace(rule))
         if new_pbf.is_constant():
             new_qubit_idx_set = set()
+        # print('Debug x_replace',self.weight,new_pbf)
         return NormalForm(new_pbf, weight=self.weight, qubit_idx_set=new_qubit_idx_set)
 
     def __add__(self, g):
@@ -107,6 +116,60 @@ class NormalForm():
 
         return NormalForm.op_subroutine(self, g, NormalForm.__truediv__)
     
+    def normalise(self, g: NormalForm):
+        if self.is_zero():
+            return (g.copy(), NormalForm(PBF(0)), NormalForm(PBF(1)))
+        if self.is_constant():
+            return (self.copy(), NormalForm(PBF(1)), g/self)
+
+        total_qubit_idx_set = self.qubit_idx_set.union(g.qubit_idx_set)
+        x_index = total_qubit_idx_set.pop()
+        x = generate_qubit_symbols(x_index)
+
+        w=[0]*2
+
+        def biggest_coeff(f):
+            return  max(f.pbf.get_coeffs_poly(), key=abs)*f.weight
+        
+        def grab_sub_and_coeff(f, g , rule):
+            sub_f=f.xreplace(rule,x_index)
+            sub_g_comp=False
+            if sub_f.is_zero():
+                sub=g.xreplace(rule,x_index)
+                sub_g_comp=True
+            else:
+                sub=sub_f
+                
+            return sub_f, sub ,biggest_coeff(sub),sub_g_comp
+
+        rule=[{x[0]:1,x[1]:0},{x[0]:0,x[1]:1}]
+        
+        sub_f0, sub0, w[0], sub_g0_comp = grab_sub_and_coeff(self,g ,rule[0])
+        sub_f1, sub1, w[1], sub_g1_comp = grab_sub_and_coeff(self,g ,rule[1])
+        
+        w[0]=NormalForm(PBF(w[0]))
+        w[1]=NormalForm(PBF(w[1]))
+
+        N0=NormalForm(PBF(0))
+        Nx=NormalForm.normal_form_init(PBF(x[1]))
+        Nxn=NormalForm.normal_form_init(PBF(x[0]))
+        
+        sub_g0=sub0 if sub_g0_comp else g.xreplace(rule[0],x_index)
+        sub_g1=sub1 if sub_g1_comp else g.xreplace(rule[1],x_index)
+
+        print('sub_f0',sub_f0,'sub_g0',sub_g0)
+        print('sub_f1',sub_f1,'sub_g1',sub_g1)
+        (h0,f0,g0)=NormalForm.normalise(sub_f0/w[0],sub_g0/w[0]) if not w[0].is_zero() else (N0,N0,N0) 
+        (h1,f1,g1)=NormalForm.normalise(sub_f1/w[1],sub_g1/w[1]) #w1=0 will??
+        
+        
+        print('h0',h0,'h1',h1,'w0',w[0],Nxn,'w1', w[1],Nx)
+        h = w[0]*Nxn*h0+w[1]*Nx*h1
+        f = Nxn*f0+Nx*f1
+        g = Nxn*g0+Nx*g1
+        print('h_out:',h)
+        return (h ,f ,g )
+
     @staticmethod
     def op_subroutine(f, g, opfunc):
         total_qubit_idx_set = f.qubit_idx_set.union(g.qubit_idx_set)
