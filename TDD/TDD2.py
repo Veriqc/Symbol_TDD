@@ -3,10 +3,11 @@ import copy
 import time
 import random
 from sympy import *
-from sympy import __version__
 from sympy.parsing.sympy_parser import parse_expr
 from graphviz import Digraph
 from IPython.display import Image
+from TDD.normal_form_v2 import PBF, NormalForm
+
 
 """Define global variables"""
 computed_table = dict()
@@ -18,15 +19,8 @@ add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
 epi=0.000001
-
-# work around for factor_list gaussianInger problem due to different sympy version
-ver_no = (int(__version__[0]), int(__version__[2]))
-gaussianOption = False
-if ver_no[0] == 1:
-    if ver_no[1] > 5:
-        gaussianOption = True
-elif ver_no[0] > 1:
-    gaussianOption = True
+S_one=NormalForm.normal_form_init(PBF(1))
+S_zero=NormalForm.normal_form_init(PBF(0))
 
 class Index:
     """The index, here idx is used when there is a hyperedge"""
@@ -58,7 +52,9 @@ class Node:
         self.idx = 0
         self.key = key
         self.succ_num=num
-        self.out_weight=[[S.One]]*num
+        self.out_weight=[]
+        for k in range(num):
+            self.out_weight.append(S_one)
         self.successor=[None]*num
         self.meas_prob=[]
 
@@ -66,7 +62,7 @@ class Node:
 class TDD:
     def __init__(self,node):
         """TDD"""
-        self.weight=[S.One]
+        self.weight=S_one
         
         self.index_set=[]
         
@@ -103,7 +99,7 @@ class TDD:
         return Image(dot.render('output'))
         
     def __eq__(self,other):
-        if self.node==other.node and self.weight==other.weight:
+        if self.node==other.node and str(self.weight)==str(other.weight):
             return True
         else:
             return False
@@ -128,25 +124,6 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
                 dot.edge(str(node.idx),str(node.successor[k].idx),color=col[k%4],label=label1)
     return dot
             
-
-
-def to_cnf2(expr,n=5):
-    expr=nsimplify(expr,tolerance=1e-15,rational=False).evalf(n=6)
-    print('-------------')
-    print(expr)
-    res=[]
-    temp=factor_list(expr, gaussian=gaussianOption)
-#     print('acc:',temp)
-    for item in temp[1]:
-        if item:
-            res.append(item[0].evalf(n=6))
-    if res:
-        res[0]*=temp[0].evalf(n=6)
-    else:
-        res=[temp[0]] #[S.Zero]
-    print(res)
-    print('-------------')
-    return res
 
         
 def Ini_TDD(index_order=[]):
@@ -223,13 +200,32 @@ def get_node_set(node,node_set=set()):
     return node_set
 
 def get_weight(sl):
-    if not isinstance(sl,list):
-        return sl
-    r=S.One
-    for item in sl:
-        r*=item
-#     print('aaaaa',sl,r)
-    return simplify(r)
+#     if not isinstance(sl,list):
+#         return sl
+#     r=S.One
+#     for item in sl:
+#         r*=item
+# #     print('aaaaa',sl,r)
+#     return simplify(r)
+    return str(sl)
+
+def to_cnf2(expr):
+    expr=nsimplify(expr,tolerance=1e-6,rational=False)
+    res=[]
+    temp=factor_list(expr)
+#     print('acc:',temp)
+    for item in temp[1]:
+        if item:
+            res.append(item[0])
+    if res:
+        res[0]*=temp[0]
+    else:
+        res=[temp[0]]
+#     print('-------------')
+#     print(expr)
+#     print(res)
+#     print('-------------')
+    return res
 
 def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
     """To return a node if it already exist, creates a new node otherwise"""
@@ -311,40 +307,13 @@ def normalize(x,the_successors):
     if all_equal:
         return the_successors[0]
     
-    weigs=[succ.weight for succ in the_successors]
-#     print('bbb:',weigs)
-    weig=[]
-    for item in weigs[0]:
-        if item in weigs[1]:
-            weig.append(item)
-            weigs[0].remove(item)
-            weigs[1].remove(item)
     
-    if weigs[0] and weigs[1]:
-        
-        weigs2,left=norm2(weigs[0],weigs[1])
-        for k in weigs[0]:
-            if not k in left:
-                weig.append(k)
-                
-        if not left:
-            weigs=[[S.One],weigs2]
-        else:
-            weigs=[left,weigs2]
-            
-    if not weigs[0]:
-        weigs[0]=[S.One]
-    if not weigs[1]:
-        weigs[1]=[S.One]    
+    (a,b,c)=the_successors[0].weight.normalise(the_successors[1].weight)
     
-#     print('www',weig,weigs)
     succ_nodes=[succ.node for succ in the_successors]
-    node=Find_Or_Add_Unique_table(x,weigs,succ_nodes)
+    node=Find_Or_Add_Unique_table(x,[b,c],succ_nodes)
     res=TDD(node)
-    if len(weig)==0:
-        res.weight=[S.One]  
-    else:
-        res.weight=weig
+    res.weight=a
     return res
 
 def get_count():
@@ -446,7 +415,7 @@ def np_2_tdd(U,order=[],key_width=True):
         res=TDD(node)
         for k in range(U_dim):
             U=U[0]
-        res.weight=[simplify(U*S.One)]
+        res.weight=NormalForm.normal_form_init(PBF(U))
         return res
     
     if not order:
@@ -543,13 +512,14 @@ def cont(tdd1,tdd2):
 
 
 def mul_weight(w1,w2):
-    if w1==[S.Zero] or w2==[S.Zero]:
-        return [S.Zero]
-    if w1==[S.One]:
-        return w2
-    if w2==[S.One]:
-        return w1
-    return to_cnf2(get_sum_form(w1+w2))
+#     if w1==[S.Zero] or w2==[S.Zero]:
+#         return [S.Zero]
+#     if w1==[S.One]:
+#         return w2
+#     if w2==[S.One]:
+#         return w1
+#     return to_cnf2(get_sum_form(w1+w2))
+    return w1*w2
 
 def get_sum_form(sl):
     r=S.One
@@ -560,11 +530,12 @@ def get_sum_form(sl):
 
 def add_weight(w1,w2):
 #     print('ddd:',w1,w2)
-    r1=get_sum_form(w1)
+#     r1=get_sum_form(w1)
 
-    r2=get_sum_form(w2)
+#     r2=get_sum_form(w2)
     
-    return to_cnf2(r1+r2)
+#     return to_cnf2(r1+r2)
+    return w1+w2
 
 def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
@@ -575,13 +546,13 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     w2=tdd2.weight
     
     if k1==-1 and k2==-1:
-        if w1==[S.Zero]:
+        if w1==S_zero:
             tdd=TDD(tdd1.node)
-            tdd.weight=[S.Zero]
+            tdd.weight=S_zero
             return tdd
-        if w2==[S.Zero]:
+        if w2==S_zero:
             tdd=TDD(tdd1.node)
-            tdd.weight=[S.Zero]
+            tdd.weight=S_zero
             return tdd
         tdd=TDD(tdd1.node)
         tdd.weight=mul_weight(w1,w2)
@@ -591,9 +562,9 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
         return tdd
 
     if k1==-1:
-        if w1==[S.Zero]:
+        if w1==S_zero:
             tdd=TDD(tdd1.node)
-            tdd.weight=[S.Zero]
+            tdd.weight=S_zero
             return tdd
         if cont_num ==0 and key_2_new_key[1][k2]==k2:
             tdd=TDD(tdd2.node)
@@ -601,17 +572,17 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             return tdd
             
     if k2==-1:
-        if w2==[S.Zero]:
+        if w2==S_zero:
             tdd=TDD(tdd2.node)
-            tdd.weight=[S.Zero]
+            tdd.weight=S_zero
             return tdd        
         if cont_num ==0 and key_2_new_key[0][k1]==k1:
             tdd=TDD(tdd1.node)
             tdd.weight=mul_weight(w1,w2)
             return tdd
     
-    tdd1.weight=[S.One]
-    tdd2.weight=[S.One]
+    tdd1.weight=S_one
+    tdd2.weight=S_one
     
     temp_key_2_new_key=[]
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0][:(k1+1)]]))
@@ -637,7 +608,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         else:
             tdd=TDD(Find_Or_Add_Unique_table(-1))
-            tdd.weight=[S.Zero]
+            tdd.weight=S_zero
             for k in range(tdd1.node.succ_num):
                 res=contract(Slicing(tdd1,k1,k),tdd2,key_2_new_key,cont_order,cont_num-1)           
                 tdd=add(tdd,res)
@@ -655,7 +626,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         else:
             tdd=TDD(Find_Or_Add_Unique_table(-1))
-            tdd.weight=[S.Zero]
+            tdd.weight=S_zero
             for k in range(tdd1.node.succ_num):
                 res=contract(Slicing(tdd1,k1,k),Slicing(tdd2,k2,k),key_2_new_key,cont_order,cont_num-1)           
                 tdd=add(tdd,res)
@@ -673,7 +644,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
             tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         else:
             tdd=TDD(Find_Or_Add_Unique_table(-1))
-            tdd.weight=[S.Zero]
+            tdd.weight=S_zero
             for k in range(tdd2.node.succ_num):
                 res=contract(tdd1,Slicing(tdd2,k2,k),key_2_new_key,cont_order,cont_num-1)           
                 tdd=add(tdd,res)
@@ -731,18 +702,18 @@ def add(tdd1,tdd2):
     k1=tdd1.node.key
     k2=tdd2.node.key
     
-    if tdd1.weight==[S.Zero]:
+    if tdd1.weight==S_zero:
         return tdd2.self_copy()
     
-    if tdd2.weight==[S.Zero]:
+    if tdd2.weight==S_zero:
         return tdd1.self_copy()
     
     if tdd1.node==tdd2.node:
         weig=add_weight(tdd1.weight,tdd2.weight)
-        if weig==[S.Zero]:
+        if weig==S_zero:
             term=Find_Or_Add_Unique_table(-1)
             res=TDD(term)
-            res.weight=[S.Zero]
+            res.weight=S_zero
             return res
         else:
             res=TDD(tdd1.node)

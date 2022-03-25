@@ -15,9 +15,11 @@ class PBF():
         
     def __repr__(self):
         return str(self.expr)
+
+    def __eq__(self, g):   # defind == 
+        return self.expr==g.expr
         
     def get_coeffs_poly(self):
-
         return [self.expr] if self.is_constant() else sp.Poly(self.expr).coeffs()
 
     def get_qubit_idx_set(self):
@@ -62,7 +64,8 @@ class NormalForm():
             self.weight = weight
         
     def __repr__(self):
-        return '(%s) * [ %s ], set=%s' % (str(self.weight), str(self.pbf), str(self.qubit_idx_set))
+        # return '(%s) * [ %s ], set=%s' % (str(self.weight), str(self.pbf), str(self.qubit_idx_set))
+        return '(%s) * [ %s ]' % (str(self.weight), str(self.pbf))
 
     def copy(self):
         return NormalForm(self.pbf, self.weight, self.qubit_idx_set.copy())
@@ -115,6 +118,9 @@ class NormalForm():
             return new_f
 
         return NormalForm.op_subroutine(self, g, NormalForm.__truediv__)
+
+    def __eq__(self, g):   # defind '==' 
+        return self.weight==g.weight and self.pbf==g.pbf
     
     def normalise(self, g: NormalForm):
         if self.is_zero():
@@ -157,17 +163,17 @@ class NormalForm():
         sub_g0=sub0 if sub_g0_comp else g.xreplace(rule[0],x_index)
         sub_g1=sub1 if sub_g1_comp else g.xreplace(rule[1],x_index)
 
-        print('sub_f0',sub_f0,'sub_g0',sub_g0)
-        print('sub_f1',sub_f1,'sub_g1',sub_g1)
+        # print('sub_f0',sub_f0,'sub_g0',sub_g0)
+        # print('sub_f1',sub_f1,'sub_g1',sub_g1)
         (h0,f0,g0)=NormalForm.normalise(sub_f0/w[0],sub_g0/w[0]) if not w[0].is_zero() else (N0,N0,N0) 
         (h1,f1,g1)=NormalForm.normalise(sub_f1/w[1],sub_g1/w[1]) #w1=0 will??
         
         
-        print('h0',h0,'h1',h1,'w0',w[0],Nxn,'w1', w[1],Nx)
+        # print('h0',h0,'h1',h1,'w0',w[0],Nxn,'w1', w[1],Nx)
         h = w[0]*Nxn*h0+w[1]*Nx*h1
         f = Nxn*f0+Nx*f1
         g = Nxn*g0+Nx*g1
-        print('h_out:',h)
+        # print('h_out:',h)
         return (h ,f ,g )
 
     @staticmethod
@@ -197,7 +203,12 @@ class NormalForm():
         NormalForm.normal_form_init(pbf)
         
     @staticmethod
-    def normal_form_init(pbf, qubit_idx_set=set()):
+    def normal_form_init(pbf, qubit_idx_set=set(),tolerance=6):
+
+        #evalf
+        tolerance1=10**-tolerance
+        pbf=PBF(sp.nsimplify(pbf.expr,tolerance=tolerance1,rational=False))
+
         if pbf.is_constant():
             return NormalForm(pbf)
         
@@ -230,10 +241,10 @@ class NormalForm():
         return NormalForm.shannon_expansion(f, w, x, qubit_idx_set, x_index)
     
     @staticmethod
-    def shannon_expansion(fs, ws, xs, qubit_idx_set, x_index):
+    def shannon_expansion(fs, ws, xs, qubit_idx_set, x_index,tolerance=6):
         if complex(ws[1]) == complex(0):
             result =  (ws[0]*fs[0].weight, xs[0]*fs[0].pbf.expr)
-        elif str(fs[0].pbf) == str(fs[1].pbf):
+        elif fs[0].pbf == fs[1].pbf:
             if complex(ws[0]) == complex(ws[1]):
                 result =  (ws[0]*fs[0].weight, fs[0].pbf.expr)
                 #qubit_idx_set.pop()
@@ -244,9 +255,12 @@ class NormalForm():
             result = (ws[1]*fs[1].weight, (xs[1]*fs[1].pbf.expr+ws[0]/ws[1]*xs[0]*fs[0].weight/fs[1].weight*fs[0].pbf.expr))
             
         #print(result)
-            
-        return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
+        tolerance1=10**-tolerance
+        result1=sp.nsimplify(result[1],tolerance=tolerance1,rational=False)
+        result0=result[0].evalf(chop=10**-tolerance)
 
+        # return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
+        return NormalForm(PBF(result1), weight=result0, qubit_idx_set=qubit_idx_set)
 #############################
 #
 # Some preserved functions
