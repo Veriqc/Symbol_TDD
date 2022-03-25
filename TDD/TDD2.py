@@ -94,8 +94,7 @@ class TDD:
         dot=Digraph(name='reduced_tree')
         dot=layout(self.node,self.key_2_index,dot,edge,real_label)
         dot.node('-0','',shape='none')
-        label1=str([self.weight.weight,self.weight.pbf])
-        dot.edge('-0',str(self.node.idx),color="blue",label=label1)
+        dot.edge('-0',str(self.node.idx),color="blue",label=str(self.weight))
         dot.format = 'png'
         return Image(dot.render('output'))
         
@@ -116,8 +115,7 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
         dot.node(str(node.idx), str(node.key), fontname="helvetica",shape="circle",color="red")
     for k in range(node.succ_num):
         if node.successor[k]:
-#             label1=str(node.out_weight[k])
-            label1=str([node.out_weight[k].weight,node.out_weight[k].pbf])
+            label1=str(node.out_weight[k])
             if not node.successor[k] in succ:
                 dot=layout(node.successor[k],key_2_idx,dot,succ,real_label)
                 dot.edge(str(node.idx),str(node.successor[k].idx),color=col[k%4],label=label1)
