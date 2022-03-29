@@ -10,14 +10,17 @@ def generate_qubit_symbols(x_index):
     return x
 
 class PBF():
-    def __init__(self, expr):
-        self.expr = expr if isinstance(expr, sp.Basic) else sp.simplify(expr)
+    def __init__(self, expr,tolerance=6):
+        # self.expr = expr if isinstance(expr, sp.Basic) else sp.simplify(expr)
+        tolerance1=10**-tolerance
+        self.expr = sp.nsimplify(expr,tolerance=tolerance1,rational=False)
         
     def __repr__(self):
         return str(self.expr)
 
     def __eq__(self, g):   # defind == 
-        return self.expr==g.expr
+        # return self.expr==g.expr
+        return self.expr.equals(g.expr)
         
     def get_coeffs_poly(self):
         return [self.expr] if self.is_constant() else sp.Poly(self.expr).coeffs()
@@ -36,12 +39,13 @@ class PBF():
     def xreplace(self, rule):
         #print(rule)
         return PBF(self.expr.xreplace(rule))
+        # return PBF(self.expr.evalf(subs=rule,chop=True))
 
 class NormalForm():
-    def __init__(self, pbf, weight=1, qubit_idx_set=set()):
+    def __init__(self, pbf, weight=1, qubit_idx_set=set(),tolerance=6):
+        self.weight= sp.N(weight,tolerance)
         #print('==init==', pbf, weight)
         self.qubit_idx_set = qubit_idx_set.copy()
-        
         if weight == 0 or pbf.expr.is_zero:
             self.pbf = PBF(0)
             self.weight = 0
@@ -97,7 +101,9 @@ class NormalForm():
             return g.copy()
         if g.pbf.expr.is_zero:
             return self.copy()
-        
+        if self.pbf==g.pbf:
+            return NormalForm(weight=self.weight+g.weight,pbf=self.pbf)
+
         return NormalForm.op_subroutine(self, g, NormalForm.__add__)
     
     def __mul__(self, g):
@@ -242,6 +248,8 @@ class NormalForm():
     
     @staticmethod
     def shannon_expansion(fs, ws, xs, qubit_idx_set, x_index,tolerance=6):
+        tolerance1=10**-tolerance
+
         if complex(ws[1]) == complex(0):
             result =  (ws[0]*fs[0].weight, xs[0]*fs[0].pbf.expr)
         elif fs[0].pbf == fs[1].pbf:
@@ -252,15 +260,11 @@ class NormalForm():
             else:
                 result =  (ws[1]*fs[0].weight, (xs[1]+ws[0]/ws[1]*xs[0])*fs[0].pbf.expr)
         else:
-            result = (ws[1]*fs[1].weight, (xs[1]*fs[1].pbf.expr+ws[0]/ws[1]*xs[0]*fs[0].weight/fs[1].weight*fs[0].pbf.expr))
+            result = (ws[1]*fs[1].weight, (xs[1]*fs[1].pbf.expr+ws[0]/ws[1]*fs[0].weight/fs[1].weight*xs[0]*fs[0].pbf.expr))
             
         #print(result)
-        tolerance1=10**-tolerance
-        result1=sp.nsimplify(result[1],tolerance=tolerance1,rational=False)
-        result0=result[0].evalf(chop=10**-tolerance)
-
-        # return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
-        return NormalForm(PBF(result1), weight=result0, qubit_idx_set=qubit_idx_set)
+       
+        return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
 #############################
 #
 # Some preserved functions
