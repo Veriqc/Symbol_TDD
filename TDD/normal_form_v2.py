@@ -43,9 +43,12 @@ class PBF():
 
 class NormalForm():
     def __init__(self, pbf, weight=1, qubit_idx_set=set(),tolerance=6):
-        self.weight= sp.N(weight,tolerance)
-        #print('==init==', pbf, weight)
+        tolerance1=10**-tolerance
+        # x=sp.Symbol('x')
+        # self.weight= sp.nsimplify(weight*x,tolerance=tolerance1,rational=False)/x
+        
         self.qubit_idx_set = qubit_idx_set.copy()
+
         if weight == 0 or pbf.expr.is_zero:
             self.pbf = PBF(0)
             self.weight = 0
@@ -53,6 +56,7 @@ class NormalForm():
         
         if pbf.is_constant():
             pbf_weight = pbf.expr
+            # pbf_weight = sp.nsimplify(pbf.expr,tolerance=tolerance1,rational=False)
         elif len(pbf.expr.args) > 0:
             pbf_weight = pbf.expr.args[0]
             while not pbf_weight.is_constant():
@@ -62,14 +66,24 @@ class NormalForm():
         
         if pbf_weight.is_constant() and not pbf_weight.is_zero:
             self.pbf = PBF(pbf.expr / pbf_weight)
-            self.weight = weight * pbf_weight
+            # self.weight = weight * pbf_weight
+            x=sp.Symbol('x')
+            self.weight= sp.nsimplify((weight * pbf_weight)*x,tolerance=tolerance1,rational=False)/x
+            # self.weight= (weight * pbf_weight).round(tolerance)
         else:
             self.pbf = pbf
             self.weight = weight
         
     def __repr__(self):
         # return '(%s) * [ %s ], set=%s' % (str(self.weight), str(self.pbf), str(self.qubit_idx_set))
-        return '(%s) * [ %s ]' % (str(self.weight), str(self.pbf))
+        if self.weight==complex(0):
+            return '0' 
+        elif self.pbf.expr==1:
+             return '%s' % str(self.weight)
+        elif self.weight==complex(1):
+            return ' %s ' % str(self.pbf)
+        else:
+            return '%s * [%s] ' % (str(self.weight), str(self.pbf))
 
     def copy(self):
         return NormalForm(self.pbf, self.weight, self.qubit_idx_set.copy())
@@ -247,9 +261,7 @@ class NormalForm():
         return NormalForm.shannon_expansion(f, w, x, qubit_idx_set, x_index)
     
     @staticmethod
-    def shannon_expansion(fs, ws, xs, qubit_idx_set, x_index,tolerance=6):
-        tolerance1=10**-tolerance
-
+    def shannon_expansion(fs, ws, xs, qubit_idx_set, x_index):
         if complex(ws[1]) == complex(0):
             result =  (ws[0]*fs[0].weight, xs[0]*fs[0].pbf.expr)
         elif fs[0].pbf == fs[1].pbf:
@@ -263,8 +275,11 @@ class NormalForm():
             result = (ws[1]*fs[1].weight, (xs[1]*fs[1].pbf.expr+ws[0]/ws[1]*fs[0].weight/fs[1].weight*xs[0]*fs[0].pbf.expr))
             
         #print(result)
-       
+        # x=sp.Symbol('x')
+        # result0= sp.nsimplify((result[0])*x,tolerance=10e-6,rational=False)/x
+
         return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
+        # return NormalForm(PBF(result[1]), weight=result0, qubit_idx_set=qubit_idx_set)
 #############################
 #
 # Some preserved functions
