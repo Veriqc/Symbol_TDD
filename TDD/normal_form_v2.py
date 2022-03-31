@@ -16,6 +16,10 @@ class PBF():
         self.expr = sp.nsimplify(expr,tolerance=tolerance1,rational=False)
         
     def __repr__(self):
+        # return str(self.expr)
+        return r'%s'%sp.latex(self.expr)
+    
+    def __str__(self):
         return str(self.expr)
 
     def __eq__(self, g):   # defind == 
@@ -42,7 +46,9 @@ class PBF():
         # return PBF(self.expr.evalf(subs=rule,chop=True))
 
 class NormalForm():
-    def __init__(self, pbf, weight=1, qubit_idx_set=set(),tolerance=6):
+    def __init__(self, pbf: PBF, weight=1, qubit_idx_set =set(),tolerance=6):
+    # def __init__(self, pbf, weight=1, qubit_idx_set=set(),fork_idx_set=set(),tolerance=6):
+
         tolerance1=10**-tolerance
         # x=sp.Symbol('x')
         # self.weight= sp.nsimplify(weight*x,tolerance=tolerance1,rational=False)/x
@@ -53,7 +59,6 @@ class NormalForm():
             self.pbf = PBF(0)
             self.weight = 0
             return
-        
         if pbf.is_constant():
             pbf_weight = pbf.expr
             # pbf_weight = sp.nsimplify(pbf.expr,tolerance=tolerance1,rational=False)
@@ -73,9 +78,25 @@ class NormalForm():
         else:
             self.pbf = pbf
             self.weight = weight
+
+        # self.fork_idx_set=fork_idx_set
         
     def __repr__(self):
         # return '(%s) * [ %s ], set=%s' % (str(self.weight), str(self.pbf), str(self.qubit_idx_set))
+        # if self.weight==complex(0):
+        #     return '0' 
+        # elif self.pbf.expr==1:
+        #      return '%s' % str(self.weight)
+        # elif self.weight==complex(1):
+        #     return ' %s ' % str(self.pbf)
+        # else:
+        #     return '%s * [%s] ' % (str(self.weight), str(self.pbf))
+        
+        # return '%s' % str(self.weight*self.pbf.expr)    
+        return r'%s' % sp.latex(self.weight*self.pbf.expr)
+    
+    
+    def __str__(self):
         if self.weight==complex(0):
             return '0' 
         elif self.pbf.expr==1:
@@ -84,6 +105,10 @@ class NormalForm():
             return ' %s ' % str(self.pbf)
         else:
             return '%s * [%s] ' % (str(self.weight), str(self.pbf))
+    @property
+    def _repr_latex_(self):
+        from IPython.display import Math
+        return Math(r'%s'%self.__repr__())
 
     def copy(self):
         return NormalForm(self.pbf, self.weight, self.qubit_idx_set.copy())
@@ -224,6 +249,7 @@ class NormalForm():
         
     @staticmethod
     def normal_form_init(pbf, qubit_idx_set=set(),tolerance=6):
+    # def normal_form_init(pbf, qubit_idx_set=set(),fork_idx_set=set(),tolerance=6):
 
         #evalf
         tolerance1=10**-tolerance
@@ -254,14 +280,21 @@ class NormalForm():
             #new_pbf = PBF( sp.simplify(f.expr/weight) if weight!=complex(0) else complex(0) )
             new_pbf = PBF( f.expr/weight if weight!=complex(0) else complex(0) )
             return NormalForm.normal_form_init(new_pbf, idx_set)
-        
+            # return NormalForm.normal_form_init(new_pbf, idx_set,fork_idx_set.copy())
+
+
         for i in range(2):
             f[i]=sub_init(w[i],sub_pbf[i], sub_qubit_idx_set)
-        
+
+        # f[0].fork_idx_set
+        # f[1].fork_idx_set
+
         return NormalForm.shannon_expansion(f, w, x, qubit_idx_set, x_index)
-    
+        # return NormalForm.shannon_expansion(f, w, x, qubit_idx_set, x_index,fork_idx_set.copy())
     @staticmethod
     def shannon_expansion(fs, ws, xs, qubit_idx_set, x_index):
+    # def shannon_expansion(fs, ws, xs, qubit_idx_set, x_index,fork_idx_set=set()):
+        # fork=False
         if complex(ws[1]) == complex(0):
             result =  (ws[0]*fs[0].weight, xs[0]*fs[0].pbf.expr)
         elif fs[0].pbf == fs[1].pbf:
@@ -272,14 +305,48 @@ class NormalForm():
             else:
                 result =  (ws[1]*fs[0].weight, (xs[1]+ws[0]/ws[1]*xs[0])*fs[0].pbf.expr)
         else:
+            # if not fs[1].pbf.expr.is_zero and not fs[0].pbf.expr.is_zero:                
+            #     fork=True
             result = (ws[1]*fs[1].weight, (xs[1]*fs[1].pbf.expr+ws[0]/ws[1]*fs[0].weight/fs[1].weight*xs[0]*fs[0].pbf.expr))
-            
-        #print(result)
-        # x=sp.Symbol('x')
-        # result0= sp.nsimplify((result[0])*x,tolerance=10e-6,rational=False)/x
+
+        # fork_idx_set1=fork_idx_set.copy()
+        # if fork:
+        #     fork_idx_set1.add(x_index)
 
         return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
-        # return NormalForm(PBF(result[1]), weight=result0, qubit_idx_set=qubit_idx_set)
+        # return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set,fork_idx_set=fork_idx_set1)
+    
+    def find_fork_idx(self):
+        qubit_idx_set=self.qubit_idx_set.copy()
+        remaining_qubits_num=qubit_idx_set.__len__()
+        expr=self.pbf.expr
+        
+        first_alphabet=sp.srepr(expr)[0] #get first_alphabet 
+        # print(first_alphabet)
+        if first_alphabet=='A': #fork
+            fork_idx=qubit_idx_set.pop()
+        elif first_alphabet=='M':
+            f=expr.as_coeff_mul()[1]
+            if f.__len__()==remaining_qubits_num: # all no fork
+                fork_idx=None
+            else: # fork at len
+                fork_idx=list(qubit_idx_set)[f.__len__()-1]
+        return fork_idx
+
+    def mul_coeff_dict(self,fork_idx):
+        f=self.pbf.expr.as_coeff_mul()[1]
+        coeff=dict()
+        for i in range (fork_idx):
+            g=f[i].as_coeff_add()[1]
+            qubit_idx=int(g[0].name.replace('x','').replace('n',''))
+            if g.__len__()==1:
+                output=(0,1) if g[0].name=='n' else (1,0)
+            else:
+                output=(1,g[1].as_coeff_Mul()[0])
+            coeff[qubit_idx]=output
+        print(coeff)
+        return coeff
+
 #############################
 #
 # Some preserved functions
