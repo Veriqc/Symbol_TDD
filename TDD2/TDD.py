@@ -102,7 +102,7 @@ class TDD:
         return Image(dot.render('output'))
         
     def __eq__(self,other):
-        if self.node==other.node and str(self.weight)==str(other.weight):
+        if self.node==other.node and str(self.weight.node)==str(other.weight.node) and get_int_key(self.weight.weight)==get_int_key(other.weight.weight):
             return True
         else:
             return False
