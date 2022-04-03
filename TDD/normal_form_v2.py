@@ -1,5 +1,6 @@
 from __future__ import annotations
 import sympy as sp
+import numpy as np
 
 def generate_qubit_symbols(x_index):
     x = ['']*2
@@ -122,14 +123,99 @@ class NormalForm():
 
         return NormalForm.op_subroutine(self, g, NormalForm.__add__)
     
-    def __mul__(self, g):
+    def __mul__(self, g:NormalForm):
         if self.is_constant() or g.is_constant():
             qubit_idx_set = self.qubit_idx_set.union(g.qubit_idx_set)
             return NormalForm(PBF(self.pbf.expr * g.pbf.expr), weight=self.weight*g.weight, qubit_idx_set=qubit_idx_set)
         elif self.pbf.expr.is_zero or g.pbf.expr.is_zero:
             return NormalForm(PBF(0))
+        '''
+        new start
+        '''
+        n=min(self.find_fork_idx,g.find_fork_idx)
+        if n>0:
+            coeff_dict1=self.mul_coeff_dict(n)
+            coeff_dict2=g.mul_coeff_dict(n)
+            def coeff_dict_mul(dict1,dict2):
+                output=1
+                dict1=dict1.copy()
+                dict2=dict2.copy()
+                qubit_idx_set = set(dict1.keys()).union(set(dict2.keys()))
+                for x_index in dict1.keys():
+                    from TDD.normal_form_v2 import generate_qubit_symbols
+                    x = generate_qubit_symbols(x_index)
+                    if x_index in dict2.keys():
+                        output*=dict1[x_index][0]*dict2[x_index][0]*x[1]+sp.simplify(dict1[x_index][1]*dict2[x_index][1])*x[0]
+                        del dict2[x_index]
+                    else:
+                        output*=dict1[x_index][0]*x[1]+dict1[x_index][1]*x[0]
+                for x_index in dict2.keys():
+                    x = generate_qubit_symbols(x_index)
+                    output*=dict2[x_index][0]*x[1]+dict2[x_index][1]*x[0]
+                return PBF(output), qubit_idx_set
+            mul=coeff_dict_mul(coeff_dict1,coeff_dict2)
+            h=NormalForm(mul[0],weight=self.weight*g.weight,qubit_idx_set=mul[1])
+        else:
+            coeff_dict1=set()
+            coeff_dict2=set()
+            h=NormalForm(PBF(self.weight*g.weight))
+        # print(h)
 
-        return NormalForm.op_subroutine(self, g, NormalForm.__mul__)
+        pf=self.remaining_term(coeff_dict1,n)
+        pg=g.remaining_term(coeff_dict2,n)
+        
+        '''mul part start'''
+        total_qubit_idx_set = pf.qubit_idx_set.union(pg.qubit_idx_set)
+
+        if len(total_qubit_idx_set)!=0:
+            x_index = total_qubit_idx_set.pop()
+        else:
+            return h
+
+        x = generate_qubit_symbols(x_index)
+        
+        sub_nf = [0]*2
+        ws = [0]*2
+        
+        for i in range(2):
+            sub_nf_f = pf.xreplace({x[i]: 1, x[1-i]: 0}, x_index)
+            sub_nf_g = pg.xreplace({x[i]: 1, x[1-i]: 0}, x_index)
+            sub_nf[i] = sub_nf_f*sub_nf_g
+            ws[i] = sub_nf[i].weight
+            sub_nf[i].weight = sp.Integer(1) if not sub_nf[i].pbf.expr.is_zero else sp.Integer(0)            
+        
+        new_qubit_idx_set = sub_nf[0].qubit_idx_set.union(sub_nf[1].qubit_idx_set)
+        new_qubit_idx_set.add(x_index)
+
+
+        #NormalForm.shannon_expansion(sub_nf, ws, x, new_qubit_idx_set, x_index)
+        fs=sub_nf
+        xs=x
+        qubit_idx_set=new_qubit_idx_set.union(h.qubit_idx_set)
+        '''shannon_expansion part'''
+
+        if complex(ws[1]) == complex(0):
+            result =  (ws[0]*fs[0].weight, xs[0]*fs[0].pbf.expr)
+        elif fs[0].pbf == fs[1].pbf:
+            if complex(ws[0]) == complex(ws[1]):
+                result =  (ws[0]*fs[0].weight, fs[0].pbf.expr)
+                #qubit_idx_set.pop()
+                qubit_idx_set.remove(x_index)
+            else:
+                result =  (ws[1]*fs[0].weight, (xs[1]+ws[0]/ws[1]*xs[0])*fs[0].pbf.expr)
+        else:
+            result = (ws[1]*fs[1].weight, (xs[1]*fs[1].pbf.expr+ws[0]/ws[1]*fs[0].weight/fs[1].weight*xs[0]*fs[0].pbf.expr))
+
+
+        result1=h.pbf.expr*result[1]
+        result0=h.weight*result[0]
+        return NormalForm(PBF(result1), weight=result0, qubit_idx_set=qubit_idx_set)
+        # return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
+        
+        '''
+        new end
+        '''
+        # return NormalForm.op_subroutine(self, g, NormalForm.__mul__)
     
     def __truediv__(self, g):
         if g.pbf.expr.is_zero:
@@ -273,42 +359,68 @@ class NormalForm():
 
         return NormalForm(PBF(result[1]), weight=result[0], qubit_idx_set=qubit_idx_set)
 
-    
+    @property
     def find_fork_idx(self):
         qubit_idx_set=self.qubit_idx_set.copy()
-        if len(qubit_idx_set)==0:
+        if len(qubit_idx_set)==0 or len(qubit_idx_set)==1:
             return sp.oo
         remaining_qubits_num=len(qubit_idx_set)
         expr=self.pbf.expr 
         first_alphabet=sp.srepr(expr)[0] #get first_alphabet 
+        # print(sp.srepr(expr))
         if first_alphabet=='A': #fork
             fork_idx=qubit_idx_set.pop()
         elif first_alphabet=='M':
             f=len(expr.as_coeff_mul()[1])
+            # print(f)
             if f==remaining_qubits_num: # all no fork
                 fork_idx=sp.oo
             else: # fork at len
                 fork_idx=list(qubit_idx_set)[f-1]
         return fork_idx
 
-    def mul_coeff_dict(self,fork_idx):
+    def mul_coeff_dict(self,fork_idx=sp.oo):
         f=self.pbf.expr.as_coeff_mul()[1]
-        idx_list=list(self.qubit_idx_set)
-        if fork_idx==sp.oo:
-            length=len(idx_list)
-        else:
-            length=idx_list.index(fork_idx)
+        idx_set=set(filter(lambda i:i<fork_idx,self.qubit_idx_set))
         coeff=dict()
-        for i in range (length):
-            g=f[i].as_coeff_add()[1]
-            qubit_idx=int(g[0].name.replace('x','').replace('n',''))
+        count=np.arange(len(idx_set))
+        count2=len(idx_set)
+        def in_idx_set(g,qubit_idx):
             if len(g)==1:
                 output=(0,1) if g[0].name[1]=='n' else (1,0)
             else:
-                output=(1,sp.poly(g[1]).coeffs()[0])
-                print(g[1].as_coeff_Mul())
+                # print('g=',g[1])
+                output=(1,g[1].as_poly().coeffs()[0])
             coeff[qubit_idx]=output
+        def out_idx_set(count2):
+            g=f[count2].as_coeff_add()[1]
+            count2+=1
+            qubit_idx=int(g[0].name.replace('x','').replace('n',''))
+            if qubit_idx in idx_set:
+                in_idx_set(g,qubit_idx)
+            else:
+                out_idx_set(count2)
+        for i in count:
+            g=f[i].as_coeff_add()[1]
+            qubit_idx=int(g[0].name.replace('x','').replace('n',''))
+            if qubit_idx in idx_set:
+                in_idx_set(g, qubit_idx)
+            else:
+                out_idx_set(count2)
         return coeff
+
+    def remaining_term(self,coeff_dict,fork_idx):
+        replace_set=set(filter(lambda i:i<fork_idx,self.qubit_idx_set))
+        remaining_nf=self.copy()
+        remaining_nf.weight=1
+        for key in replace_set:
+            x =generate_qubit_symbols(key)
+            rule=[{x[0]:1,x[1]:0},{x[0]:0,x[1]:1}]
+            if coeff_dict[key][0]==1:
+                remaining_nf=remaining_nf.xreplace(rule[1],key)
+            else:
+                remaining_nf=remaining_nf.xreplace(rule[0],key)
+        return remaining_nf
 
 #############################
 #
