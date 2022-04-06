@@ -91,7 +91,7 @@ class TDD:
         temp.index_2_key=copy.copy(self.index_2_key)
         return temp
     
-    def show(self,real_label=True):
+    def show(self,real_label=True,filename='output'):
         edge=[]              
         dot=Digraph(name='reduced_tree')
         dot=layout(self.node,self.key_2_index,dot,edge,real_label)
@@ -99,7 +99,7 @@ class TDD:
         label1=str(self.weight)
         dot.edge('-0',str(self.node.idx),color="blue",label=label1)
         dot.format = 'png'
-        return Image(dot.render('output'))
+        return Image(dot.render(filename))
         
     def __eq__(self,other):
         if self.node==other.node and str(self.weight.node)==str(other.weight.node) and get_int_key(self.weight.weight)==get_int_key(other.weight.weight):
