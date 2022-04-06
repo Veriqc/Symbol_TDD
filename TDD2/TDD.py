@@ -91,7 +91,7 @@ class TDD:
         temp.index_2_key=copy.copy(self.index_2_key)
         return temp
     
-    def show(self,real_label=True,filename='output'):
+    def show(self,real_label=True):
         edge=[]              
         dot=Digraph(name='reduced_tree')
         dot=layout(self.node,self.key_2_index,dot,edge,real_label)
@@ -99,7 +99,7 @@ class TDD:
         label1=str(self.weight)
         dot.edge('-0',str(self.node.idx),color="blue",label=label1)
         dot.format = 'png'
-        return Image(dot.render(filename))
+        return Image(dot.render('output'))
         
     def __eq__(self,other):
         if self.node==other.node and str(self.weight.node)==str(other.weight.node) and get_int_key(self.weight.weight)==get_int_key(other.weight.weight):
@@ -130,7 +130,7 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
             
 
         
-def Ini_TDD(index_order=[],n=50):
+def Ini_TDD(index_order=[],var=[],n=50):
     """To initialize the unique_table,computed_table and set up a global index order"""
     global computed_table
     global unique_table
@@ -145,9 +145,8 @@ def Ini_TDD(index_order=[],n=50):
     cont_find_time=0
     cont_hit_time=0
     set_index_order(index_order)
-    var=[]
-    for k in range(n-1,-1,-1):
-        var.append('x'+str(k))
+    if not var:
+        var=['x'+str(k) for k in range(n-1,-1,-1)]
     Ini_BDD(var)
     S_one=get_bdd(1)
     S_zero=get_bdd(0)

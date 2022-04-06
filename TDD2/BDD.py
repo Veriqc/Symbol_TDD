@@ -154,6 +154,7 @@ def get_index_order():
 def get_int_key(weight):
     """To transform a complex number to a tuple with int values"""
     global epi
+#     print(weight)
     return (int(round(weight.real/epi)) ,int(round(weight.imag/epi)))
 
 def get_node_set(node,node_set=set()):
@@ -577,12 +578,25 @@ def get_expr(node):
     if node.expr:
         return node.expr
     x=node.key
-    xn=x[0]+'n'+x[1:]
+#     xn=x[0]+'n'+x[1:]
+    xn=x+"'"
     l=get_expr(node.successor[0])
     r=get_expr(node.successor[1])
+#     for k in range(2):
+#         if get_int_key(node.out_weight[k]-1)==(0,0):
+#             node.out_weight[k]=1
+#         if get_int_key(node.out_weight[k]-1/np.sqrt(2))==(0,0):
+#             node.out_weight[k]=1/sqrt(2)
+#         if get_int_key(node.out_weight[k]-1/2)==(0,0):
+#             node.out_weight[k]=1/2  
+#         if get_int_key(node.out_weight[k]-1/(2*np.sqrt(2)))==(0,0):
+#             node.out_weight[k]=1/(2*sqrt(2)) 
+#         if get_int_key(node.out_weight[k]-complex(1/np.sqrt(2),1/np.sqrt(2)))==(0,0):
+#             node.out_weight[k]=1/sqrt(2)+ 1/sqrt(2)*I         
+    
     if l==r:
-        res=(node.out_weight[1]*symbols(x)+node.out_weight[0]*symbols(xn))*l
+        res=(node.out_weight[0]*symbols(xn)+node.out_weight[1]*symbols(x))*l
     else:
-        res=node.out_weight[1]*symbols(x)*l+node.out_weight[0]*symbols(xn)*r
+        res=node.out_weight[0]*symbols(xn)*r+node.out_weight[1]*symbols(x)*l
     node.expr=res
     return res
