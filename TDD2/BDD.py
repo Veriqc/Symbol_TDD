@@ -325,7 +325,11 @@ def get_bdd(f):
         tdd=get_one_state()
         tdd.weight=complex(f)
         return tdd
-    
+    if len(res)==0:
+        tdd=get_one_state()
+        tdd.weight=complex(f)
+        return tdd        
+#     print(f,res)
     key=res[0][1]
     key2=res[0][1][0]+'n'+res[0][1][1:]
     f1=f.xreplace({symbols(key):0,symbols(key2):1})
@@ -346,17 +350,27 @@ def mul(tdd1,tdd2):
     w1=tdd1.weight
     w2=tdd2.weight
     
-    if tdd1.node==tdd2.node:
+#     if tdd1.node==tdd2.node:
+#         weig=tdd1.weight*tdd2.weight
+#         if get_int_key(weig)==(0,0):
+#             term=Find_Or_Add_Unique_table(-1)
+#             res=BDD(term)
+#             res.weight=0
+#             return res
+#         else:
+#             res=BDD(tdd1.node)
+#             res.weight=weig
+#             return res
+    if k1==k2==-1:
         weig=tdd1.weight*tdd2.weight
+        term=Find_Or_Add_Unique_table(-1)
+        res=BDD(term)        
         if get_int_key(weig)==(0,0):
-            term=Find_Or_Add_Unique_table(-1)
-            res=BDD(term)
             res.weight=0
             return res
         else:
-            res=BDD(tdd1.node)
             res.weight=weig
-            return res
+            return res        
 
     if k1==-1:
         if w1==0:
