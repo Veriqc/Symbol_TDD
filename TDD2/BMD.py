@@ -49,14 +49,14 @@ class BMD:
         temp.weight = self.weight
         return temp
     
-    def show(self,real_label=True):
+    def show(self,real_label=True,name='output'):
         edge=[]              
         dot=Digraph(name='reduced_tree')
         dot=layout(self.node,dot,edge)
         dot.node('-0','',shape='none')
         dot.edge('-0',str(self.node.idx),color="blue",label=str(complex(round(self.weight.real,2),round(self.weight.imag,2))))
         dot.format = 'png'
-        return Image(dot.render('output'))
+        return Image(dot.render(name))
         
     def __eq__(self,other):
         if self.node==other.node and get_int_key(self.weight)==get_int_key(other.weight):
@@ -206,19 +206,25 @@ def normalize(x,the_successors):
 #             break
 #     if all_equal:
 #         return the_successors[0]
+
     if get_int_key(the_successors[1].weight)==(0,0):
         return the_successors[0]
-    
+#     if get_int_key(the_successors[0].weight)==(0,0) and get_int_key(the_successors[1].weight)==(0,0):
+#         node=Find_Or_Add_Unique_table(-1)
+#         temp=BMD(node)
+#         temp.weight=0
+#         return temp
+
     weigs=[succ.weight for succ in the_successors]
-    
     weigs_abs=[np.around(abs(weig)/epi) for weig in weigs]
     weig_max=weigs[weigs_abs.index(max(weigs_abs))]
     weigs=[weig/weig_max for weig in weigs]
-    for k in range(len(the_successors)):
-        if get_int_key(weigs[k])==(0,0):
-            node=Find_Or_Add_Unique_table(-1)
-            the_successors[k]=BMD(node)
-            the_successors[k].weight=weigs[k]=0    
+    
+#     for k in range(len(the_successors)):
+#         if get_int_key(weigs[k])==(0,0):
+#             node=Find_Or_Add_Unique_table(-1)
+#             the_successors[k]=BMD(node)
+#             the_successors[k].weight=weigs[k]=0    
     succ_nodes=[succ.node for succ in the_successors]
     node=Find_Or_Add_Unique_table(x,weigs,succ_nodes)
     res=BMD(node)
@@ -435,11 +441,20 @@ def Slicing(tdd,x,c):
     k=tdd.node.key
     
     if k==-1:
-        return tdd.self_copy()
+        if c==0:
+            return tdd.self_copy()
+        else:
+            temp=get_one_state()
+            temp.weight=0
+            return temp
     
     if global_index_order[k]>global_index_order[x]:
-        return tdd.self_copy()
-    
+        if c==0:
+            return tdd.self_copy()
+        else:
+            temp=get_one_state()
+            temp.weight=0
+            return temp
     if k==x:
         res=BMD(tdd.node.successor[c])
         res.weight=tdd.node.out_weight[c]
@@ -454,10 +469,20 @@ def Slicing2(tdd,x,c):
     k=tdd.node.key
     
     if k==-1:
-        return tdd.self_copy()
+        if c==0:
+            return tdd.self_copy()
+        else:
+            temp=get_one_state()
+            temp.weight=0
+            return temp
     
     if global_index_order[k]>global_index_order[x]:
-        return tdd.self_copy()
+        if c==0:
+            return tdd.self_copy()
+        else:
+            temp=get_one_state()
+            temp.weight=0
+            return temp
     
     if k==x:
         res=BMD(tdd.node.successor[c])
@@ -516,20 +541,28 @@ def add(tdd1,tdd2):
 
 def normalize_2_fun(tdd1,tdd2):
     #tdd2/tdd1
+     
+    if tdd1.weight==0 and tdd2.weight==0:
+        print('--------------------------------------')
     if tdd1.weight==0:
+#         print('a')
         return [tdd2.self_copy(),tdd1.self_copy(),get_one_state()]
     
     if tdd2.weight==0:
+#         print('b')
         return [tdd1.self_copy(),get_one_state(),tdd2.self_copy()]    
     
     if tdd1.node.key==-1:
+#         print('c')
         temp=tdd2.self_copy()
-        temp.weight/=tdd1.weight
+        temp.weight/=tdd1.weight    
         return [tdd1.self_copy(),get_one_state(),temp]
+
     
     if tdd1.node==tdd2.node:
+#         print('d')
         temp=get_one_state()
-        temp.weight=tdd2.weight/tdd1.weight
+        temp.weight=tdd2.weight/tdd1.weight    
         return [tdd1.self_copy(),get_one_state(),temp]
 
     if find_computed_table(['/',tdd1,tdd2]):
@@ -556,9 +589,9 @@ def normalize_2_fun(tdd1,tdd2):
 #         b=get_one_state()
         
         
-        
 #     [a1,b1,c1]=normalize_2_fun(Slicing2(tdd1,the_key,0),Slicing2(tdd2,the_key,0))
-#     [a2,b2,c2]=normalize_2_fun(Slicing2(tdd1,the_key,1),Slicing2(tdd2,the_key,1))
+#     [a2,b2,c2]=normalize_2_fun(Slicing2(tdd1,the_key,1),Slicing2(tdd2,the_key,1))s
+        
     [a1,b1,c1]=normalize_2_fun(f0,g0)
     [a2,b2,c2]=normalize_2_fun(f1,g1)
     a1.weight*=-1
@@ -567,15 +600,26 @@ def normalize_2_fun(tdd1,tdd2):
     [a2,b2,c2]=[add(a2,a1),add(b2,b1),add(c2,c1)]
     a1.weight*=-1
     b1.weight*=-1
-    c1.weight*=-1    
+    c1.weight*=-1
     a= normalize(the_key,[a1,a2])
     b= normalize(the_key,[b1,b2])
     c= normalize(the_key,[c1,c2])
     insert_2_computed_table(['/',tdd1,tdd2],[a,b,c])
     
-    print(mul(a,b)==tdd1)
-    print(mul(a,c)==tdd2)
-    return [a,b,c]     
+#     print(mul(a,b)==tdd1)
+    
+#     print(mul(a,c)==tdd2)
+#     print(str(mul(a,b)))
+#     print(str(tdd1))
+#     print(str(mul(a,c)))
+#     print(str(tdd2))
+    if not mul(a,b)==tdd1 or not mul(a,c)==tdd2:
+        print(str(tdd1))
+        print(str(tdd2))
+        print('----------------')
+        tdd1.show(name='tdd1')
+        tdd2.show(name='tdd3')
+    return [a,b,c]
 
     
 def get_expr(node):
