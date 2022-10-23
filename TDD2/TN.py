@@ -27,7 +27,7 @@ class TensorNetwork:
 #             self.index_set=self.get_index_set()
 #         if len(data)>0 and len(index_2_node)==0:
 #             self.index_2_node=self.get_index_2_node()
-    def cont(self,optimizer=None):
+    def cont(self,optimizer=None,Max_nodes=[]):
         tdd=get_identity_tdd()        
         if optimizer=='tree_decomposition':
             decom_tree,tree_width=get_tree_decomposition(self)
@@ -76,8 +76,9 @@ class TensorNetwork:
             temp_tdd=ts.tdd()
             tdd=cont(tdd,temp_tdd)
             nodes=max(nodes,tdd.node_number())
+        
         print('Max nodes:',nodes)
-#         print(gu2())
+        Max_nodes.append(nodes)
         return tdd
 
     def get_index_set(self):
