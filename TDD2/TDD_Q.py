@@ -98,7 +98,7 @@ def cir_2_tn(cir,input_s=[],output_s=[]):
                 var+=[Index(var_in,hyper_index[var_in]),Index(var_in,hyper_index[var_in]+1)]
                 if qubits_index[k]==0 and hyper_index[var_in]==0:
                     start_tensors[k]=ts
-                end_tensors[k]=ts             
+                end_tensors[k]=ts
                 hyper_index[var_in]+=1
         else:
             for k in q:
@@ -112,6 +112,8 @@ def cir_2_tn(cir,input_s=[],output_s=[]):
                 qubits_index[k]+=1
         if len(q)>1:
             U=reshape(U)
+        if len(q)==1:
+            U=U.T
         ts.data=U
         ts.index_set=var
         tn.tensors.append(ts)

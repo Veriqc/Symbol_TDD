@@ -15,7 +15,7 @@ add_find_time=0
 add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
-epi=0.000001
+epi=1e-20
 
     
 class Node:
@@ -59,10 +59,8 @@ class BDD:
         return Image(dot.render('output'))
         
     def __eq__(self,other):
-        if self.node==other.node and get_int_key(self.weight)==get_int_key(other.weight):
-            return True
-        else:
-            return False
+        return self.node==other.node and get_int_key(self.weight)==get_int_key(other.weight)
+
         
     def __add__(self, g):        
         return add(self,g)
@@ -75,9 +73,10 @@ class BDD:
     
     def expr(self):
         if self.node.key==-1:
-            return self.weight
+            return nsimplify(self.weight,tolerance=epi).evalf(-np.log10(epi))
+            # return N(self.weight,chop=1e-3)
         res=get_expr(self.node)
-        return self.weight*res
+        return nsimplify(self.weight*res,tolerance=epi).evalf(-np.log10(epi))
     def __repr__(self):
         return str(self.expr())
     
@@ -154,7 +153,6 @@ def get_index_order():
 def get_int_key(weight):
     """To transform a complex number to a tuple with int values"""
     global epi
-#     print(weight)
     return (int(round(weight.real/epi)) ,int(round(weight.imag/epi)))
 
 def get_node_set(node,node_set=set()):
@@ -211,7 +209,10 @@ def normalize(x,the_successors):
     
     weigs_abs=[np.around(abs(weig)/epi) for weig in weigs]
     weig_max=weigs[weigs_abs.index(max(weigs_abs))]
-    weigs=[weig/weig_max for weig in weigs]
+    if abs(weig_max)<epi:
+        weigs=[0]*len(weigs)
+    else:
+        weigs=[weig/weig_max for weig in weigs]
     for k in range(len(the_successors)):
         if get_int_key(weigs[k])==(0,0):
             node=Find_Or_Add_Unique_table(-1)
@@ -225,8 +226,11 @@ def normalize(x,the_successors):
 
 def get_count():
     global add_find_time,add_hit_time,cont_find_time,cont_hit_time
-    print("add:",add_hit_time,'/',add_find_time,'/',add_hit_time/add_find_time)
-    print("cont:",cont_hit_time,"/",cont_find_time,"/",cont_hit_time/cont_find_time)
+    print("add:",add_hit_time,'/',add_find_time,'/')
+    print("cont:",cont_hit_time,"/",cont_find_time,"/")
+
+    # print("add:",add_hit_time,'/',add_find_time,'/',add_hit_time/add_find_time)
+    # print("cont:",cont_hit_time,"/",cont_find_time,"/",cont_hit_time/cont_find_time)
 
 def find_computed_table(item):
     """To return the results that already exist"""
@@ -358,11 +362,11 @@ def mul(tdd1,tdd2):
 #             res.weight=0
 #             return res
 #         else:
-#             res=BDD(tdd1.node)
+#             res=BDD(tdd1.node)s
 #             res.weight=weig
 #             return res
     if k1==k2==-1:
-        weig=tdd1.weight*tdd2.weight
+        weig=w1*w2
         term=Find_Or_Add_Unique_table(-1)
         res=BDD(term)        
         if get_int_key(weig)==(0,0):
@@ -373,7 +377,8 @@ def mul(tdd1,tdd2):
             return res        
 
     if k1==-1:
-        if w1==0:
+        # if w1==0:
+        if abs(w1)<epi:
             tdd=BDD(tdd1.node)
             tdd.weight=0
             return tdd
@@ -383,7 +388,8 @@ def mul(tdd1,tdd2):
         return tdd
             
     if k2==-1:
-        if w2==0:
+        # if w2==0:
+        if abs(w2)<epi:
             tdd=BDD(tdd2.node)
             tdd.weight=0
             return tdd        
@@ -466,13 +472,14 @@ def add(tdd1,tdd2):
 
     k1=tdd1.node.key
     k2=tdd2.node.key
-#     print(tdd1,k1)
-#     print(tdd2,k2)
-#     print(tdd1.node.key,tdd2.node.key,tdd1.node,tdd2.node,tdd1.node.out_weight,tdd2.node.out_weight,tdd1.node.successor,tdd2.node.successor)
-    if tdd1.weight==0:
+    
+
+    # if tdd1.weight==0:
+    if abs(tdd1.weight)<epi:
         return tdd2.self_copy()
     
-    if tdd2.weight==0:
+    # if tdd2.weight==0:
+    if abs(tdd2.weight)<epi:
         return tdd1.self_copy()
     
     if tdd1.node==tdd2.node:
@@ -509,10 +516,10 @@ def add(tdd1,tdd2):
 
 def normalize_2_fun(tdd1,tdd2):
     #tdd2/tdd1
-    if tdd1.weight==0:
+    if abs(tdd1.weight)<epi:
         return [tdd2.self_copy(),tdd1,get_one_state()]
     
-    if tdd2.weight==0:
+    if abs(tdd2.weight)<epi:
         return [tdd1.self_copy(),get_one_state(),tdd2.self_copy()]    
     
     if tdd1.node.key==-1:
@@ -524,66 +531,27 @@ def normalize_2_fun(tdd1,tdd2):
         temp=get_one_state()
         temp.weight=tdd2.weight/tdd1.weight
         return [tdd1.self_copy(),get_one_state(),temp]
-    if 0:
-#     if tdd1.node.out_weight[0]!=0 and tdd1.node.out_weight[1]!=0:
-        print(tdd1.node.out_weight)
-        w1=tdd1.weight
-        w2=tdd2.weight
-        tdd1.weight=1
-        tdd2.weight=1
-    
-        if find_computed_table(['/',tdd1,tdd2]):
-            [a,b,c]=find_computed_table(['/',tdd1,tdd2])
-            a.weight*=w1
-            c.weight*=w2/w1    
-            tdd1.weight=w1
-            tdd2.weight=w2
-#             print('11111')
-            return [a,b,c]
 
-        k1=tdd1.node.key
-        k2=tdd2.node.key
-    
-        if global_index_order[k1]<=global_index_order[k2]:
-            the_key=k1
-        else:
-            the_key=k2
-        
-        [a1,b1,c1]=normalize_2_fun(Slicing(tdd1,the_key,0),Slicing(tdd2,the_key,0))
-        [a2,b2,c2]=normalize_2_fun(Slicing(tdd1,the_key,1),Slicing(tdd2,the_key,1))
-    
-        a= normalize(the_key,[a1,a2])
-        b= normalize(the_key,[b1,b2])
-        c= normalize(the_key,[c1,c2])
-        insert_2_computed_table(['/',tdd1,tdd2],[a,b,c])
-
-        a.weight*=w1
-        c.weight*=w2/w1    
-        tdd1.weight=w1
-        tdd2.weight=w2
+    if find_computed_table(['/',tdd1,tdd2]):
+        [a,b,c]=find_computed_table(['/',tdd1,tdd2])
         return [a,b,c]
-    else:
-        if find_computed_table(['/',tdd1,tdd2]):
-            [a,b,c]=find_computed_table(['/',tdd1,tdd2])
-#             print('11111')
-            return [a,b,c]
 
-        k1=tdd1.node.key
-        k2=tdd2.node.key
+    k1=tdd1.node.key
+    k2=tdd2.node.key
+
+    if global_index_order[k1]<=global_index_order[k2]:
+        the_key=k1
+    else:
+        the_key=k2
     
-        if global_index_order[k1]<=global_index_order[k2]:
-            the_key=k1
-        else:
-            the_key=k2
-        
-        [a1,b1,c1]=normalize_2_fun(Slicing2(tdd1,the_key,0),Slicing2(tdd2,the_key,0))
-        [a2,b2,c2]=normalize_2_fun(Slicing2(tdd1,the_key,1),Slicing2(tdd2,the_key,1))
-    
-        a= normalize(the_key,[a1,a2])
-        b= normalize(the_key,[b1,b2])
-        c= normalize(the_key,[c1,c2])
-        insert_2_computed_table(['/',tdd1,tdd2],[a,b,c])
-        return [a,b,c]        
+    [a1,b1,c1]=normalize_2_fun(Slicing2(tdd1,the_key,0),Slicing2(tdd2,the_key,0))
+    [a2,b2,c2]=normalize_2_fun(Slicing2(tdd1,the_key,1),Slicing2(tdd2,the_key,1))
+
+    a= normalize(the_key,[a1,a2])
+    b= normalize(the_key,[b1,b2])
+    c= normalize(the_key,[c1,c2])
+    insert_2_computed_table(['/',tdd1,tdd2],[a,b,c])
+    return [a,b,c]        
     
     
 def get_expr(node):
@@ -609,8 +577,11 @@ def get_expr(node):
 #             node.out_weight[k]=1/sqrt(2)+ 1/sqrt(2)*I         
     
     if l==r:
-        res=(node.out_weight[0]*symbols(xn)+node.out_weight[1]*symbols(x))*l
+        if abs(node.out_weight[0]-node.out_weight[1])<epi:
+            res=l
+        else:
+            res=(node.out_weight[0]*symbols(xn)+node.out_weight[1]*symbols(x))*l
     else:
-        res=node.out_weight[0]*symbols(xn)*r+node.out_weight[1]*symbols(x)*l
+        res=node.out_weight[0]*symbols(xn)*l+node.out_weight[1]*symbols(x)*r
     node.expr=res
     return res

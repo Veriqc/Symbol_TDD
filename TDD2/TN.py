@@ -2,7 +2,6 @@ import numpy as np
 from TDD2.TDD import Index,get_tdd,get_identity_tdd,cont
 import networkx as nx
 from networkx.algorithms.approximation.treewidth import treewidth_min_degree,treewidth_min_fill_in
-from TDD2.BDD import get_unique_table_num as gu2
 
 common_tensor_table = dict()
 
@@ -27,19 +26,25 @@ class TensorNetwork:
 #             self.index_set=self.get_index_set()
 #         if len(data)>0 and len(index_2_node)==0:
 #             self.index_2_node=self.get_index_2_node()
-    def cont(self,optimizer=None,Max_nodes=[]):
-        tdd=get_identity_tdd()        
+    def cont(self,optimizer=None,max_node=False):
+        tdd=get_identity_tdd()
+        max_node_num=0
         if optimizer=='tree_decomposition':
             decom_tree,tree_width=get_tree_decomposition(self)
             cont_index = find_contraction_index(decom_tree)
             computed_tdd_list=[]
             while cont_index:
-                computed_tdd_list = contract_an_index(self,cont_index,computed_tdd_list)
+                computed_tdd_list,node_num = contract_an_index(self,cont_index,computed_tdd_list,max_node)
                 cont_index=find_contraction_index(decom_tree)
-            
+                if max_node:
+                    max_node_num=max(max_node_num,node_num)
             for temp_tdd in computed_tdd_list:
                 tdd=cont(tdd,temp_tdd)
-            return tdd
+                if max_node:
+                    max_node_num=max(max_node_num,tdd.node_number())
+#             if max_node:
+#                 print("Max node num:",max_node_num)
+            return tdd,max_node_num
         if optimizer=='cir_partition1':
             if not self.tn_type=='cir':
                 print("This optimizer is only used for quantum circuits!")
@@ -48,11 +53,19 @@ class TensorNetwork:
             for level in range(len(partion_cir)):
                 temp_tn=TensorNetwork(partion_cir[level][0])
                 tdd1=temp_tn.cont()
+                if max_node:
+                    max_node_num=max(max_node_num,tdd1.node_number())                
                 temp_tn=TensorNetwork(partion_cir[level][1])
                 tdd2=temp_tn.cont()
+                if max_node:
+                    max_node_num=max(max_node_num,tdd2.node_number())                
                 temp_tdd=cont(tdd1,tdd2)
                 tdd=cont(tdd,temp_tdd)
-            return tdd
+                if max_node:
+                    max_node_num=max(max_node_num,tdd.node_number())
+#             if max_node:
+#                 print("Max node num:",max_node_num)                    
+            return tdd,max_node_num
         
         if optimizer=='cir_partition2':
             if not self.tn_type=='cir':
@@ -63,23 +76,37 @@ class TensorNetwork:
             for level in range(len(partion_cir)):
                 temp_tn=TensorNetwork(partion_cir[level][0])
                 tdd1=temp_tn.cont()
+                if max_node:
+                    max_node_num=max(max_node_num,tdd1.node_number())                
                 temp_tn=TensorNetwork(partion_cir[level][1])
                 tdd2=temp_tn.cont()
+                if max_node:
+                    max_node_num=max(max_node_num,tdd2.node_number())                
                 temp_tdd=cont(tdd1,tdd2)
+                if max_node:
+                    max_node_num=max(max_node_num,temp_tdd.node_number())                
                 temp_tn=TensorNetwork(partion_cir[level][2])
-                tdd3=temp_tn.cont()            
+                tdd3=temp_tn.cont()
+                if max_node:
+                    max_node_num=max(max_node_num,tdd3.node_number())                
                 temp_tdd=cont(tdd3,temp_tdd)
+                if max_node:
+                    max_node_num=max(max_node_num,temp_tdd.node_number())                
                 tdd=cont(tdd,temp_tdd)
-            return tdd        
-        nodes=0
+                if max_node:
+                    max_node_num=max(max_node_num,tdd.node_number())
+#             if max_node:
+#                 print("Max node num:",max_node_num)                    
+            return tdd,max_node_num     
+        
         for ts in self.tensors:
             temp_tdd=ts.tdd()
             tdd=cont(tdd,temp_tdd)
-            nodes=max(nodes,tdd.node_number())
-        
-        print('Max nodes:',nodes)
-        Max_nodes.append(nodes)
-        return tdd
+            if max_node:
+                max_node_num=max(max_node_num,tdd.node_number())
+#         if max_node:
+#             print("Max node num:",max_node_num)                
+        return tdd,max_node_num
 
     def get_index_set(self):
         for ts in self.tensors:
@@ -154,10 +181,12 @@ def find_contraction_index(tree_decomposition):
         return find_contraction_index(tree_decomposition)
 
     
-def contract_an_index(tn,cont_index,computed_tdd_list):
+def contract_an_index(tn,cont_index,computed_tdd_list,max_node=False):
     temp_tn=TensorNetwork(tn.index_2_tensor[cont_index])
-    temp_tdd=temp_tn.cont()
-    
+    temp_tdd=temp_tn.cont()[0]
+    max_node_num=0
+    if max_node:
+        max_node_num=max(max_node_num,temp_tdd.node_number())
     for ts in tn.index_2_tensor[cont_index]:
         for idx in ts.index_set:
             if idx.key!=cont_index:
@@ -169,11 +198,13 @@ def contract_an_index(tn,cont_index,computed_tdd_list):
 
         if cont_index in tdd_idx_out:
             temp_tdd=cont(tdd,temp_tdd)
+            if max_node:
+                max_node_num=max(max_node_num,temp_tdd.node_number())            
         else:
             temp_computed_tdd_list.append(tdd)
     temp_computed_tdd_list.append(temp_tdd)
     computed_tdd_list = temp_computed_tdd_list
-    return computed_tdd_list            
+    return computed_tdd_list,max_node_num           
             
 def circuit_partion1(tn):
     """The first partition scheme; 

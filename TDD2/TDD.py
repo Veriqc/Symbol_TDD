@@ -17,7 +17,7 @@ add_find_time=0
 add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
-epi=0.000001
+epi=1e-20
 # S_one=NormalForm.normal_form_init(PBF(1))
 # S_zero=NormalForm.normal_form_init(PBF(0))
 
@@ -269,12 +269,16 @@ def normalize(x,the_successors):
 
 def get_count():
     global add_find_time,add_hit_time,cont_find_time,cont_hit_time
-    print("add:",add_hit_time,'/',add_find_time,'/',add_hit_time/add_find_time)
-    print("cont:",cont_hit_time,"/",cont_find_time,"/",cont_hit_time/cont_find_time)
+    print("add:",add_hit_time,'/',add_find_time,'/')
+    print("cont:",cont_hit_time,"/",cont_find_time,"/")
+
+    # print("add:",add_hit_time,'/',add_find_time,'/',add_hit_time/add_find_time)
+    # print("cont:",cont_hit_time,"/",cont_find_time,"/",cont_hit_time/cont_find_time)
 
 def find_computed_table(item):
     """To return the results that already exist"""
     global computed_table,add_find_time,add_hit_time,cont_find_time,cont_hit_time
+
     if item[0]=='s':
         temp_key=item[1].index_2_key[item[2]]
         the_key=('s',item[1].weight,item[1].node,temp_key,item[3])
