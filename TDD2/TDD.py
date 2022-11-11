@@ -17,7 +17,7 @@ add_find_time=0
 add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
-epi=1e-20
+epi=1e-3
 # S_one=NormalForm.normal_form_init(PBF(1))
 # S_zero=NormalForm.normal_form_init(PBF(0))
 
@@ -122,9 +122,13 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
             label1=str(node.out_weight[k])
             if not node.successor[k] in succ:
                 dot=layout(node.successor[k],key_2_idx,dot,succ,real_label)
+#                 if get_int_key(node.out_weight[k].weight)==(0,0):
+#                     continue
                 dot.edge(str(node.idx),str(node.successor[k].idx),color=col[k%4],label=label1)
                 succ.append(node.successor[k])
             else:
+#                 if get_int_key(node.out_weight[k].weight)==(0,0):
+#                     continue
                 dot.edge(str(node.idx),str(node.successor[k].idx),color=col[k%4],label=label1)
     return dot
             
@@ -243,7 +247,302 @@ def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
         unique_table[temp_key]=res
     return res
 
-def normalize(x,the_successors):
+
+def if_line_combine(tdd1,tdd2):
+    if tdd1.node==tdd2.node:
+        return False
+    if tdd1.node.key!=tdd2.node.key:
+        return False
+    if tdd1.node.successor[0]==tdd1.node.successor[1]==tdd2.node.successor[0]==tdd2.node.successor[1]:      
+        return True
+    if tdd1.node.successor[0]!=tdd1.node.successor[1] or tdd2.node.successor[0]!=tdd2.node.successor[1]:
+        return False
+    if tdd1.node.out_weight!=tdd2.node.out_weight:
+        return False
+    return if_line_combine(Slicing(tdd1,tdd1.node.key,0),Slicing(tdd2,tdd2.node.key,0))
+
+def if_line_combine2(tdd1,tdd2):
+    if tdd1.node==tdd2.node:
+        return False
+    if tdd1.node.key!=tdd2.node.key:
+        return False
+    if tdd1.node.successor[0]==tdd2.node.successor[0] and tdd1.node.successor[1]==tdd2.node.successor[1]:      
+        return True
+    if tdd1.node.successor[0]!=tdd1.node.successor[1] and tdd1.node.successor[0].key!=-1 and tdd1.node.successor[1].key!=-1:
+        return False
+    if tdd2.node.successor[0]!=tdd2.node.successor[1] and tdd2.node.successor[0].key!=-1 and tdd2.node.successor[1].key!=-1:
+        return False
+    if tdd1.node.successor[0].key!=-1:
+        temp1=Slicing(tdd1,tdd1.node.key,0)
+    else:
+        temp1=Slicing(tdd1,tdd1.node.key,1)
+    if tdd2.node.successor[0].key!=-1:
+        temp2=Slicing(tdd2,tdd2.node.key,0)
+    else:
+        temp2=Slicing(tdd2,tdd2.node.key,1)      
+    return if_line_combine2(temp1,temp2)
+
+def normalise_line_combine(x,tdd1,tdd2):
+    if tdd1.node.successor[0]==tdd1.node.successor[1]==tdd2.node.successor[0]==tdd2.node.successor[1]:
+        f0=mul_weight(tdd1.weight,tdd1.node.out_weight[0])
+        f1=mul_weight(tdd1.weight,tdd1.node.out_weight[1])
+        if mul_weight(f0,f1)!=S_zero:
+            return normalize(x,[tdd1,tdd2],combine=False)
+        g0=mul_weight(tdd2.weight,tdd2.node.out_weight[0])
+        if mul_weight(f0,g0)!=S_zero:
+            return normalize(x,[tdd1,tdd2],combine=False)
+        if mul_weight(f1,g0)!=S_zero:
+            return normalize(x,[tdd1,tdd2],combine=False)
+        g1=mul_weight(tdd2.weight,tdd2.node.out_weight[1])
+        if mul_weight(f0,g1)!=S_zero:
+            return normalize(x,[tdd1,tdd2],combine=False)
+        if mul_weight(f1,g1)!=S_zero:
+            return normalize(x,[tdd1,tdd2],combine=False)
+        if mul_weight(g0,g1)!=S_zero:
+            return normalize(x,[tdd1,tdd2],combine=False)
+        node1=tdd1.node.successor[0]
+        node2=tdd1.node.successor[0]
+        w=S_one
+        if f0+g0==S_zero:
+            node1=Find_Or_Add_Unique_table(-1)
+        if f1+g1==S_zero:
+            node2=Find_Or_Add_Unique_table(-1)
+        if f0+g0==f1+g1:
+            w=f0+g0
+            node=node1
+        else:
+            node=Find_Or_Add_Unique_table(tdd1.node.key,[f0+g0,f1+g1],[node1,node2])
+        w1=(f0+f1)*w
+        w2=(g0+g1)*w
+        node1=node
+        node2=node
+        w=S_one
+        if w1==S_zero:
+            node1=Find_Or_Add_Unique_table(-1)
+        if w2==S_zero:
+            node2=Find_Or_Add_Unique_table(-1)
+        if w1==w2:
+            w=w1
+            node=node1
+        else:           
+            node=Find_Or_Add_Unique_table(x,[w1,w2],[node1,node2])
+        tdd=TDD(node)
+        tdd.weight=w
+        return tdd
+    temp1=Slicing(tdd1,tdd1.node.key,0)
+    temp1.weight=tdd1.weight
+    temp2=Slicing(tdd2,tdd1.node.key,0)
+    temp2.weight=tdd2.weight
+    temp_tdd=normalise_line_combine(x,temp1,temp2)
+    succ0=Slicing(temp_tdd,x,0).node
+    succ1=Slicing(temp_tdd,x,1).node
+    temp_weight=tdd1.node.out_weight
+    if temp_weight[0]==S_zero:
+        succ0=Find_Or_Add_Unique_table(-1)
+    if temp_weight[1]==S_zero:
+        succ1=Find_Or_Add_Unique_table(-1)  
+    node1=Find_Or_Add_Unique_table(tdd1.node.key,temp_weight,[succ0,succ0])
+    node2=Find_Or_Add_Unique_table(tdd1.node.key,temp_weight,[succ1,succ1])
+    if temp_tdd.weight!=S_one:
+        w1=temp_tdd.weight
+        w2=temp_tdd.weight
+    else:
+        w1=temp_tdd.node.out_weight[0]
+        w2=temp_tdd.node.out_weight[1]       
+    if w1==S_zero:
+        node1=Find_Or_Add_Unique_table(-1)
+    if w2==S_zero:
+        node2=Find_Or_Add_Unique_table(-1)
+    w=S_one        
+    if node1==node2 and w1==w2:
+        w=w1
+        node=node1
+    else:
+        node=Find_Or_Add_Unique_table(x,[w1,w2],[node1,node2])
+    tdd=TDD(node)
+    tdd.weight=w
+    return tdd
+
+def normalise_line_combine2(x,tdd1,tdd2):
+#     print(x)
+#     if (tdd1.node.successor[0]==tdd2.node.successor[0] or tdd1.node.out_weight[0]==S_zero or tdd2.node.out_weight[0]==S_zero) and (tdd1.node.successor[1]==tdd2.node.successor[1] or tdd1.node.out_weight[1]==S_zero or tdd2.node.out_weight[1]==S_zero):
+#     if tdd1.node.successor==tdd2.node.successor:
+    con=False
+    if tdd1.node.successor==tdd2.node.successor:
+        con=True
+    nodes=[]
+    if tdd1.node.out_weight[0]!=S_zero:
+        nodes.append(tdd1.node.successor[0])
+    if tdd1.node.out_weight[1]!=S_zero:
+        nodes.append(tdd1.node.successor[1])
+    if tdd2.node.out_weight[0]!=S_zero:
+        nodes.append(tdd2.node.successor[0])
+    if tdd2.node.out_weight[1]!=S_zero:
+        nodes.append(tdd2.node.successor[1]) 
+    flag=True
+    for k in range(len(nodes)-1):
+        if not nodes[k+1]==nodes[0]:
+            flag=False
+    if con or flag:
+        f0=mul_weight(tdd1.weight,tdd1.node.out_weight[0])
+        g0=mul_weight(tdd2.weight,tdd2.node.out_weight[0])
+        f1=mul_weight(tdd1.weight,tdd1.node.out_weight[1])
+        g1=mul_weight(tdd2.weight,tdd2.node.out_weight[1])
+        if mul_weight(f0+f1,g0+g1)!=S_zero:
+            return normalize(x,[tdd1,tdd2],combine=False)
+        if tdd1.node.out_weight[0]!=S_zero:
+            node1=tdd1.node.successor[0]
+        else:
+            node1=tdd2.node.successor[0]
+        if tdd1.node.out_weight[1]!=S_zero:
+            node2=tdd1.node.successor[1]
+        else:
+            node2=tdd2.node.successor[1]            
+        w=S_one
+        if f0+g0==S_zero:
+            node1=Find_Or_Add_Unique_table(-1)
+        if f1+g1==S_zero:
+            node2=Find_Or_Add_Unique_table(-1)
+        if f0+g0==f1+g1 and node1==node2:
+            w=f0+g0
+            node=node1
+        else:
+            node=Find_Or_Add_Unique_table(tdd1.node.key,[f0+g0,f1+g1],[node1,node2])
+        w1=(f0+f1)*w
+        w2=(g0+g1)*w
+        node1=node
+        node2=node
+        w=S_one
+        if w1==S_zero:
+            node1=Find_Or_Add_Unique_table(-1)
+        if w2==S_zero:
+            node2=Find_Or_Add_Unique_table(-1)
+        if w1==w2:
+            w=w1
+            node=node1
+        else:           
+            node=Find_Or_Add_Unique_table(x,[w1,w2],[node1,node2])
+        tdd=TDD(node)
+        tdd.weight=w
+        return tdd
+    if tdd1.node.successor[0].key!=-1:
+        temp1=Slicing(tdd1,tdd1.node.key,0)
+    else:
+        temp1=Slicing(tdd1,tdd1.node.key,1)
+    if tdd2.node.successor[0].key!=-1:
+        temp2=Slicing(tdd2,tdd2.node.key,0)
+    else:
+        temp2=Slicing(tdd2,tdd2.node.key,1)     
+    
+    temp1.weight=tdd1.weight
+    temp2.weight=tdd2.weight
+    
+    temp_tdd=normalise_line_combine2(x,temp1,temp2)
+    
+    succ0=Slicing(temp_tdd,x,0).node
+    succ1=Slicing(temp_tdd,x,0).node
+    temp_weight1=tdd1.node.out_weight
+    if temp_weight1[0]==S_zero:
+        succ0=Find_Or_Add_Unique_table(-1)
+    if temp_weight1[1]==S_zero:
+        succ1=Find_Or_Add_Unique_table(-1)        
+    node1=Find_Or_Add_Unique_table(tdd1.node.key,temp_weight1,[succ0,succ1])
+    
+    succ0=Slicing(temp_tdd,x,1).node
+    succ1=Slicing(temp_tdd,x,1).node
+    temp_weight2=tdd2.node.out_weight
+    if temp_weight2[0]==S_zero:
+        succ0=Find_Or_Add_Unique_table(-1)
+    if temp_weight2[1]==S_zero:
+        succ1=Find_Or_Add_Unique_table(-1)    
+    node2=Find_Or_Add_Unique_table(tdd2.node.key,temp_weight2,[succ0,succ1])
+    
+#     if (node1.successor[0]==node2.successor[0] or node1.out_weight[0]==S_zero or node2.out_weight[0]==S_zero) and (node1.successor[1]==node2.successor[1] or node1.out_weight[1]==S_zero or node2.out_weight[1]==S_zero):
+    con=False
+    if node1.successor==node2.successor:
+        con=True
+    nodes=[]
+    if node1.out_weight[0]!=S_zero:
+        nodes.append(node1.successor[0])
+    if node1.out_weight[1]!=S_zero:
+        nodes.append(node1.successor[1])
+    if node2.out_weight[0]!=S_zero:
+        nodes.append(node2.successor[0])
+    if node2.out_weight[1]!=S_zero:
+        nodes.append(node2.successor[1]) 
+    flag=True
+    for k in range(len(nodes)-1):
+        if not nodes[k+1]==nodes[0]:
+            flag=False
+    if con or flag:
+        temp1=TDD(node1)
+        temp1.weight=temp_tdd.weight*temp_tdd.node.out_weight[0]
+        temp2=TDD(node2)
+        temp2.weight=temp_tdd.weight*temp_tdd.node.out_weight[1]
+        return normalise_line_combine2(x,temp1,temp2)
+        #         f0=mul_weight(temp1.weight,temp1.node.out_weight[0])
+#         g0=mul_weight(temp2.weight,temp2.node.out_weight[0])
+#         f1=mul_weight(temp1.weight,temp1.node.out_weight[1])
+#         g1=mul_weight(temp2.weight,temp2.node.out_weight[1])
+#         if mul_weight(f0+f1,g0+g1)!=S_zero:
+#             return normalize(x,[temp1,temp2],combine=False)
+#         if temp1.node.out_weight[0]!=S_zero:
+#             node1=temp1.node.successor[0]
+#         else:
+#             node1=temp2.node.successor[0]
+#         if temp1.node.out_weight[1]!=S_zero:
+#             node2=temp1.node.successor[1]
+#         else:
+#             node2=temp2.node.successor[1]            
+#         w=S_one
+#         if f0+g0==S_zero:
+#             node1=Find_Or_Add_Unique_table(-1)
+#         if f1+g1==S_zero:
+#             node2=Find_Or_Add_Unique_table(-1)
+#         if f0+g0==f1+g1 and node1==node2:
+#             w=f0+g0
+#             node=node1
+#         else:
+#             node=Find_Or_Add_Unique_table(temp1.node.key,[f0+g0,f1+g1],[node1,node2])
+#         w1=(f0+f1)*w
+#         w2=(g0+g1)*w
+#         node1=node
+#         node2=node
+#         w=S_one
+#         if w1==S_zero:
+#             node1=Find_Or_Add_Unique_table(-1)
+#         if w2==S_zero:
+#             node2=Find_Or_Add_Unique_table(-1)
+#         if w1==w2:
+#             w=w1
+#             node=node1
+#         else:           
+#             node=Find_Or_Add_Unique_table(x,[w1,w2],[node1,node2])
+#         tdd=TDD(node)
+#         tdd.weight=w
+#         return tdd
+    
+    if temp_tdd.weight!=S_one:
+        w1=temp_tdd.weight
+        w2=temp_tdd.weight
+    else:
+        w1=temp_tdd.node.out_weight[0]
+        w2=temp_tdd.node.out_weight[1]       
+    if w1==S_zero:
+        node1=Find_Or_Add_Unique_table(-1)
+    if w2==S_zero:
+        node2=Find_Or_Add_Unique_table(-1)
+    w=S_one        
+    if node1==node2 and w1==w2:
+        w=w1
+        node=node1
+    else:
+        node=Find_Or_Add_Unique_table(x,[w1,w2],[node1,node2])
+    tdd=TDD(node)
+    tdd.weight=w
+    return tdd
+
+def normalize(x,the_successors,combine=True):
     """The normalize and reduce procedure"""
     global epi
     all_equal=True
@@ -253,14 +552,11 @@ def normalize(x,the_successors):
             break
     if all_equal:
         return the_successors[0]
-    
-#     t1=time.time()
+    if combine:
+        if if_line_combine2(the_successors[0],the_successors[1]):
+            return normalise_line_combine2(x,the_successors[0],the_successors[1])
     [a,b,c]=the_successors[1].weight.self_normalize(the_successors[0].weight)
-#     t=time.time()-t1
-#     if t>0.001:
-#         print('norm',t)
-#         print(the_successors[0].weight)
-#         print(the_successors[1].weight)
+
     succ_nodes=[succ.node for succ in the_successors]
     node=Find_Or_Add_Unique_table(x,[b,c],succ_nodes)
     res=TDD(node)
@@ -269,16 +565,12 @@ def normalize(x,the_successors):
 
 def get_count():
     global add_find_time,add_hit_time,cont_find_time,cont_hit_time
-    print("add:",add_hit_time,'/',add_find_time,'/')
-    print("cont:",cont_hit_time,"/",cont_find_time,"/")
-
-    # print("add:",add_hit_time,'/',add_find_time,'/',add_hit_time/add_find_time)
-    # print("cont:",cont_hit_time,"/",cont_find_time,"/",cont_hit_time/cont_find_time)
+    print("add:",add_hit_time,'/',add_find_time,'/',add_hit_time/add_find_time)
+    print("cont:",cont_hit_time,"/",cont_find_time,"/",cont_hit_time/cont_find_time)
 
 def find_computed_table(item):
     """To return the results that already exist"""
     global computed_table,add_find_time,add_hit_time,cont_find_time,cont_hit_time
-
     if item[0]=='s':
         temp_key=item[1].index_2_key[item[2]]
         the_key=('s',item[1].weight,item[1].node,temp_key,item[3])
@@ -525,7 +817,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
         if cont_num>0:
             tdd.weight.weight*=2**cont_num
         return tdd
-
+#注意，我们在这里允许直接乘上一个权重，而不是把它push到底层去，可能会导致表示不唯一，若要进行等价性检验，需要在最后renormalise一下
     if k1==-1:
         if w1==S_zero:
             tdd=TDD(tdd1.node)
@@ -534,6 +826,8 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
         if cont_num ==0 and key_2_new_key[1][k2]==k2:
             tdd=TDD(tdd2.node)
             tdd.weight=mul_weight(w1,w2)
+            if tdd.weight==S_zero:
+                tdd.node=Find_Or_Add_Unique_table(-1)
             return tdd
             
     if k2==-1:
@@ -544,6 +838,8 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
         if cont_num ==0 and key_2_new_key[0][k1]==k1:
             tdd=TDD(tdd1.node)
             tdd.weight=mul_weight(w1,w2)
+            if tdd.weight==S_zero:
+                tdd.node=Find_Or_Add_Unique_table(-1)
             return tdd
     
     tdd1.weight=S_one
@@ -559,6 +855,8 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
         tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         tdd1.weight=w1
         tdd2.weight=w2
+        if tdd.weight==S_zero:
+            tdd.node=Find_Or_Add_Unique_table(-1)
         return tdd
                 
     if cont_order[0][k1]<cont_order[1][k2]:
@@ -618,6 +916,8 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     tdd1.weight=w1
     tdd2.weight=w2
 #     tdd.weight=simplify(tdd.weight)
+    if tdd.weight==S_zero:
+        tdd.node=Find_Or_Add_Unique_table(-1)
     return tdd
     
 def Slicing(tdd,x,c):

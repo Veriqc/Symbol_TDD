@@ -15,7 +15,7 @@ add_find_time=0
 add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
-epi=1e-20
+epi=1e-3
 
     
 class Node:
