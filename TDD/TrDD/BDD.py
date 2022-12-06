@@ -277,7 +277,9 @@ def normalize(x,the_successors):
     the_degrees=[succ[0] for succ in the_successors]
     if not len(set(the_degrees))==len(the_degrees):
         print('Repeated degrees')
-        
+    '''
+    將此sin^3以上的判斷改到mul中
+    '''    
     need_merge=False
     if isinstance(x,str) and x[:3]=='sin':
         if 2 in the_degrees:
