@@ -277,22 +277,23 @@ def normalize(x,the_successors):
     the_degrees=[succ[0] for succ in the_successors]
     if not len(set(the_degrees))==len(the_degrees):
         print('Repeated degrees')
+    
     '''
     將此sin^3以上的判斷改到mul中
     '''    
-    need_merge=False
-    if isinstance(x,str) and x[:3]=='sin':
-        if 2 in the_degrees:
-            the_term=the_successors[the_degrees.index(2)]
-            the_successors.pop(the_degrees.index(2))
-            res1=BDD(the_term[2])
-            res1.weight=the_term[1]
-            temp=normalize('cos'+x[3:],[[2,-1,Find_Or_Add_Unique_table(-1)]])
-            res2=mul(res1,temp)
-            if len(the_successors)==0:
-                res=add(res1,res2)
-                return res
-            need_merge=True
+    # need_merge=False
+    # if isinstance(x,str) and x[:3]=='sin':
+    #     if 2 in the_degrees:
+    #         the_term=the_successors[the_degrees.index(2)]
+    #         the_successors.pop(the_degrees.index(2))
+    #         res1=BDD(the_term[2])
+    #         res1.weight=the_term[1]
+    #         temp=normalize('cos'+x[3:],[[2,-1,Find_Or_Add_Unique_table(-1)]])
+    #         res2=mul(res1,temp)
+    #         if len(the_successors)==0:
+    #             res=add(res1,res2)
+    #             return res
+    #         need_merge=True
     
     weigs_abs=[np.around(abs(succ[1])/epi) for succ in the_successors]
     weig_max=the_successors[weigs_abs.index(max(weigs_abs))][1]
@@ -303,9 +304,9 @@ def normalize(x,the_successors):
     res=BDD(node)
     res.weight=weig_max
     
-    if need_merge:
-        res=add(res,res1)
-        res=add(res,res2)
+    # if need_merge:
+    #     res=add(res,res1)
+    #     res=add(res,res2)
     return res
 
 def get_count():
@@ -502,7 +503,12 @@ def mul(tdd1,tdd2):
                 temp_tdd2.weight=succ2[1]            
                 temp_res=mul(temp_tdd1,temp_tdd2)
                 if not succ1[0]+succ2[0]==0:
-                    temp_res=normalize(k1,[[succ1[0]+succ2[0],temp_res.weight,temp_res.node]])
+                    if succ1[0]+succ2[0]==2 and k1[:3]=='sin':
+                        temp_res1=normalize('cos'+k1[3:],[[2,-1,Find_Or_Add_Unique_table(-1)]])
+                        temp_res1=mul(temp_res1,temp_res)
+                        temp_res=add(temp_res,temp_res1)
+                    else:
+                        temp_res=normalize(k1,[[succ1[0]+succ2[0],temp_res.weight,temp_res.node]])
                 tdd=add(tdd,temp_res)
     elif global_index_order[k1]<=global_index_order[k2]:
         the_successor=[]
