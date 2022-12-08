@@ -14,25 +14,25 @@ def add_hyper_index(var_list,hyper_index):
             hyper_index[var]=0
             
 def reshape(M):
-    # v=M.shape[0]
-    # h=M.shape[1]
-    # M=np.array(np.vsplit(M,v/2))
-    # M=np.array(np.dsplit(M,h/2))
-    # if M.shape[0]!=2 and M.shape[1]!=2:
-    #     M=reshape(M)
-    # return M
+    v=M.shape[0]
+    h=M.shape[1]
+    M=np.array(np.vsplit(M,v/2))
+    M=np.array(np.dsplit(M,h/2))
+    if M.shape[0]!=2 and M.shape[1]!=2:
+        M=reshape(M)
+    return M
 
-    U=M
-    if U.shape==(1,1):
-        return U
+    # U=M
+    # if U.shape==(1,1):
+    #     return U
     
-    if U.shape[0]==U.shape[1]:
-        split_U=np.split(U,2,1)
-    else:
-        split_U=np.split(U,2,0)
-    split_U[0]=reshape(split_U[0])
-    split_U[1]=reshape(split_U[1]) 
-    return np.array([split_U])[0]     
+    # if U.shape[0]==U.shape[1]:
+    #     split_U=np.split(U,2,1)
+    # else:
+    #     split_U=np.split(U,2,0)
+    # split_U[0]=reshape(split_U[0])
+    # split_U[1]=reshape(split_U[1]) 
+    # return np.array([split_U])[0]     
             
 def get_real_qubit_num(cir):
     """Calculate the real number of qubits of a circuit"""

@@ -4,6 +4,7 @@ from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
 from graphviz import Digraph
 from IPython.display import Image
+import math
 
 """Define global variables"""
 computed_table = dict()
@@ -52,7 +53,6 @@ class Node:
         self.successor=[None]*num
         self.meas_prob=[]
     def __repr__(self) -> str:
-        # print('TDD 64 ',str(self.key)+str(self.out_weight)+str(self.successor))
         return str(self.key)+str(self.out_weight)+str(self.successor)
 
     def mystr(self,depth=0) -> str:
@@ -102,10 +102,8 @@ class TDD:
         return Image(dot.render(filename))
         
     def __eq__(self,other):
-        if self.node==other.node and self.weight==other.weight: 
-            return True
-        else:
-            return False
+        return self.node==other.node and self.weight==other.weight
+
         
 def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
     col=['red','blue','black','green']
@@ -224,7 +222,9 @@ def get_index_order():
 def get_int_key(weight):
     """To transform a complex number to a tuple with int values"""
     global epi
+
     return (int(round(weight.real/epi)) ,int(round(weight.imag/epi)))
+
 
 def get_node_set(node,node_set=set()):
     """Only been used when counting the node number of a TDD"""
@@ -304,6 +304,13 @@ def if_line_combine2(tdd1,tdd2):
     else:
         temp2=Slicing(tdd2,tdd2.node.key,1)      
     return if_line_combine2(temp1,temp2)
+
+def if_line_combine3(tdd1,tdd2):
+    if tdd1.node.key!=tdd2.node.key:
+        return False
+    if tdd1.node==tdd2.node:
+        return False
+    
 
 def normalise_line_combine(x,tdd1,tdd2):
     if tdd1.node.successor[0]==tdd1.node.successor[1]==tdd2.node.successor[0]==tdd2.node.successor[1]:

@@ -1,10 +1,9 @@
 import numpy as np
 import copy
-import time
-import random
 from graphviz import Digraph
 from IPython.display import Image
 from sympy import *
+import math
 
 """Define global variables"""
 computed_table = dict()
@@ -31,14 +30,24 @@ class Node:
 class BDD:
     def __init__(self,node):
         """BDD"""
-        self.weight=1
+        self._weight=1
 
         if isinstance(node,Node):
             self.node=node
         else:
             self.node=Node(node)
             
-            
+    @property
+    def weight(self):
+        return self._weight
+    @weight.setter
+    def weight(self, value):
+        if abs(value)-abs(value.real) < epi:
+            value=value.real
+        elif abs(value)-abs(value.imag) < epi:
+            value=value.imag * 1j
+        self._weight=value
+
     def node_number(self):
         node_set=set()
         node_set=get_node_set(self.node,node_set)
@@ -59,7 +68,7 @@ class BDD:
         return Image(dot.render('output'))
         
     def __eq__(self,other):
-        return self.node==other.node and get_int_key(self.weight)==get_int_key(other.weight)
+        return self.node==other.node and math.isclose(self.weight.real, other.weight.real, rel_tol=epi) and math.isclose(self.weight.imag, other.weight.imag, rel_tol=epi)
 
         
     def __add__(self, g):        
@@ -72,11 +81,20 @@ class BDD:
         return normalize_2_fun(g,self)
     
     def expr(self):
+        value=[self.weight.real,self.weight.imag]
+        for i in range(2):
+            if math.isclose(value[i] , int(value[i]), rel_tol = epi):
+                value[i] = int(value[i])
+            if math.isclose(value[i] , int(value[i]+1), rel_tol = epi):
+                value[i] = int(value[i]+1)
+
+        value=value[0]+value[1]*I
         if self.node.key==-1:
-            return nsimplify(self.weight,tolerance=epi).evalf(-np.log10(epi))
-            # return N(self.weight,chop=1e-3)
+            return value
         res=get_expr(self.node)
-        return nsimplify(self.weight*res,tolerance=epi).evalf(-np.log10(epi))
+        return value*res
+
+
     def __repr__(self):
         return str(self.expr())
     

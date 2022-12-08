@@ -25,7 +25,7 @@ class TensorNetwork:
 
     def cont(self,optimizer=None,max_node=False):
         tdd=get_identity_tdd()
-        max_node_num=0  
+        max_node_num=0
         if optimizer=='tree_decomposition':
             decom_tree,tree_width=get_tree_decomposition(self)
             cont_index = find_contraction_index(decom_tree)

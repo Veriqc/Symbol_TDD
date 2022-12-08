@@ -1,12 +1,11 @@
 import numpy as np
 import copy
-import time
-import random
+import math
 from graphviz import Digraph
 from IPython.display import Image
 from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
-import sympy as sy
+import sympy as sp
 
 """Define global variables"""
 computed_table = dict()
@@ -17,7 +16,7 @@ add_find_time=0
 add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
-epi=0.00000001
+epi=1e-10
 
     
 class Node:
@@ -34,14 +33,24 @@ class Node:
 class BDD:
     def __init__(self,node):
         """BDD"""
-        self.weight=1
+        self._weight=1
 
         if isinstance(node,Node):
             self.node=node
         else:
             self.node=Node(node)
             
-            
+    @property
+    def weight(self):
+        return self._weight
+    @weight.setter
+    def weight(self, value):
+        if abs(value)-abs(value.real) < epi:
+            value=value.real
+        elif abs(value)-abs(value.imag) < epi:
+            value=value.imag * 1j
+        self._weight=value
+
     def node_number(self):
         node_set=set()
         node_set=get_node_set(self.node,node_set)
@@ -72,10 +81,9 @@ class BDD:
         return res
         
     def __eq__(self,other):
-        if self.node==other.node and get_int_key(self.weight)==get_int_key(other.weight):
-            return True
-        else:
-            return False
+        
+        return self.node==other.node and math.isclose(self.weight.real, other.weight.real, rel_tol=epi) and math.isclose(self.weight.imag, other.weight.imag, rel_tol=epi)
+
         
     def __add__(self, g):        
         return add(self,g)
@@ -87,11 +95,20 @@ class BDD:
         return normalize_2_fun(g,self)
     
     def expr(self):
+        value=[self.weight.real,self.weight.imag]
+        for i in range(2):
+            if math.isclose(value[i] , int(value[i]), rel_tol = epi):
+                value[i] = int(value[i])
+            if math.isclose(value[i] , int(value[i]+1), rel_tol = epi):
+                value[i] = int(value[i]+1)
+
+        value=value[0]+value[1]*I
         if self.node.key==-1:
-            # return self.weight
-            return nsimplify(self.weight,rational=False,tolerance=1e-3)
+            return value
+        
         res=get_expr(self.node)
-        return nsimplify(self.weight*res,tolerance=1e-3)
+
+        return value*res
     
     def get_value(self,val):
         res=get_value_node(self.node,val)
@@ -184,7 +201,7 @@ def get_index_order():
 def get_int_key(weight):
     """To transform a complex number to a tuple with int values"""
     global epi
-#     print(weight)
+
     return (int(round(weight.real/epi)) ,int(round(weight.imag/epi)))
 
 def get_node_set(node,node_set=set()):
@@ -295,7 +312,8 @@ def normalize(x,the_successors):
     #             return res
     #         need_merge=True
     
-    weigs_abs=[np.around(abs(succ[1])/epi) for succ in the_successors]
+    # weigs_abs=[np.around(abs(succ[1])/epi) for succ in the_successors]
+    weigs_abs=[abs(succ[1])/epi for succ in the_successors]
     weig_max=the_successors[weigs_abs.index(max(weigs_abs))][1]
     
     the_successors=[[succ[0],succ[1]/weig_max,succ[2]] for succ in the_successors]
@@ -422,17 +440,17 @@ def get_bdd(f):
     if len(f.args)==1:
         tdd=normalize(str(f),[[1,1,Find_Or_Add_Unique_table(-1)]])
         return tdd
-    if isinstance(f,sy.core.add.Add):
+    if isinstance(f,sp.core.add.Add):
         tdd=get_zero_state()
         for add_term in f.args:
             temp_tdd=get_bdd(add_term)
             tdd=add(tdd,temp_tdd)
-    elif isinstance(f,sy.core.mul.Mul):
+    elif isinstance(f,sp.core.mul.Mul):
         tdd=get_one_state()
         for mul_term in f.args:
             temp_tdd=get_bdd(mul_term)
             tdd=mul(tdd,temp_tdd)
-    elif isinstance(f,sy.core.power.Pow):
+    elif isinstance(f,sp.core.power.Pow):
         tdd=get_one_state()
         pow= f.args[1]
         for mul_times in range(pow):
@@ -728,11 +746,12 @@ def get_expr(node):
         return node.expr
     x=node.key
     
-    expr=parse_expr(x)
-    
+    triangle_function=parse_expr(x)
+
     res=0
     for succ in node.successor:
-        res+=nsimplify(succ[1]*expr**succ[0],tolerance=1e-3)*get_expr(succ[2])
+        res+=nsimplify(succ[1]*triangle_function**succ[0],tolerance=1e-3)*get_expr(succ[2])
+        # print('BDD 744 ',succ)
 
     node.expr=res
     return res
