@@ -1,5 +1,5 @@
 import numpy as np
-from TDD.TDD import Index,get_tdd,get_identity_tdd,cont
+from TDD.TDD import Index,get_identity_tdd,cont
 import networkx as nx
 from networkx.algorithms.approximation.treewidth import treewidth_min_degree,treewidth_min_fill_in
 
@@ -13,6 +13,7 @@ class Tensor:
         self.qubits=qubits #This is used only when it represent a quantum gate 
         
     def tdd(self):
+        from TDD.TDD import get_tdd
         return get_tdd(self.data,self.index_set)        
         
 class TensorNetwork:

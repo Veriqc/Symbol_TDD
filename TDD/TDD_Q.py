@@ -20,6 +20,8 @@ def reshape(M):
     M=np.array(np.dsplit(M,h/2))
     if M.shape[0]!=2 and M.shape[1]!=2:
         M=reshape(M)
+    # else:
+    #     M=M.T
     return M
 
     # U=M
@@ -187,8 +189,9 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
                 qubits_index[k]+=1
         if len(q)>1:
             U=reshape(U)
-        if len(q)==1:
-            U=U.T
+        if qubits_num>1:
+            if len(q)==1:
+                U=U.T
         ts.data=U
         ts.index_set=var
         tn.tensors.append(ts)

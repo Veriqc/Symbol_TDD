@@ -42,11 +42,17 @@ class BDD:
         return self._weight
     @weight.setter
     def weight(self, value):
-        if abs(value)-abs(value.real) < epi:
-            value=value.real
-        elif abs(value)-abs(value.imag) < epi:
-            value=value.imag * 1j
-        self._weight=value
+        value=[value.real,value.imag]
+
+        for i in range(2):
+            if math.isclose(value[i] , int(value[i]), rel_tol = epi):
+                value[i] = int(value[i])
+            elif math.isclose(value[i] , int(value[i]+1), rel_tol = epi):
+                value[i] = int(value[i]+1)
+            elif math.isclose(value[i]+1 , int(value[i]+1), rel_tol = epi):
+                value[i] = int(value[i]+1)-1
+
+        self._weight=value[0]+value[1]*1j
 
     def node_number(self):
         node_set=set()
@@ -85,14 +91,17 @@ class BDD:
         for i in range(2):
             if math.isclose(value[i] , int(value[i]), rel_tol = epi):
                 value[i] = int(value[i])
-            if math.isclose(value[i] , int(value[i]+1), rel_tol = epi):
+            elif math.isclose(value[i] , int(value[i]+1), rel_tol = epi):
                 value[i] = int(value[i]+1)
-
+            elif math.isclose(value[i]+1 , int(value[i]+1), rel_tol = epi):
+                value[i] = int(value[i]+1)-1
         value=value[0]+value[1]*I
         if self.node.key==-1:
             return value
+        
         res=get_expr(self.node)
-        return value*res
+        
+        return  value*res
 
 
     def __repr__(self):
