@@ -3,6 +3,8 @@ from TDD.TN import Index,Tensor,TensorNetwork
 from qiskit.quantum_info.operators import Operator
 from sympy import *
 from qiskit.circuit.parameterexpression import ParameterExpression
+import math
+
 
 def is_diagonal(U):
     i, j = np.nonzero(U)
@@ -114,51 +116,73 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             # print(param_expr,'\n',type(param_expr))
             
             if isinstance(param_expr,ParameterExpression) and len(param_expr.parameters) != 0:
+                '''
+                由於旋轉矩陣的三角函數為sin((coeff*theta+const)/2)，分數的角度不好處理，因此實際上是把theta/2當作一個變數。
+                下方取出const與coeff，再求出新的表達式new_expr。
+                '''
                 s=symbols(list(param_expr.parameters)[0].name.replace("[","").replace("]",""))
                 sp_expr=sympify(str(param_expr).replace("[","").replace("]",""))
+                
+                #取得旋轉角度所加的常數
                 const=sp_expr.replace(s,0)
-                coeff=int(format(float(sp_expr.replace(s,1)-const),".0f"))
-                new_expr=s+const/coeff/2
+                #取得旋轉角度變數所加的係數
+                # coeff=int(format(float(sp_expr.replace(s,1)-const),".0f"))
+                coeff=sp_expr.replace(s,1)-const
+                coeff_self=int(format(float(sp_expr.replace(s,1)-const),".0f"))
+                coeff_plus=int(format(float(sp_expr.replace(s,1)-const),".0f"))+1
+                if math.isclose(coeff , coeff_self, rel_tol = 1e-3):
+                    coeff = coeff_self
+                elif math.isclose(coeff , coeff_plus, rel_tol = 1e-3):
+                    coeff = coeff_plus
+                elif math.isclose(coeff+1 , coeff_plus, rel_tol = 1e-3):
+                    coeff = coeff_plus-1
+                else:
+                    print(sp_expr)
+                    print(const,coeff)
+                    print(coeff_self,coeff_plus)
+                    assert isinstance(coeff,int), 'coeff is %s and the value is %i not int'%(type(coeff),coeff)
+                #求出新的變數表達式
+                # new_expr=s+const/coeff/2
+                new_expr=coeff*s+const/2
 
-                from sympy.simplify.fu import TR9, TR11
-                # sin_expr=nsimplify(TR11(TR9(fourier_series(sin(sp_expr)).truncate())),tolerance=1e-3)
-                # cos_expr=nsimplify(TR11(TR9(fourier_series(cos(sp_expr)).truncate())),tolerance=1e-3)
+                # from sympy.simplify.fu import TR9, TR11
+                # # sin_expr=nsimplify(TR11(TR9(fourier_series(sin(sp_expr)).truncate())),tolerance=1e-3)
+                # # cos_expr=nsimplify(TR11(TR9(fourier_series(cos(sp_expr)).truncate())),tolerance=1e-3)
 
-                sin_expr=nsimplify(TR11(TR9(fourier_series(sin(new_expr)).truncate())),tolerance=1e-3)
-                cos_expr=nsimplify(TR11(TR9(fourier_series(cos(new_expr)).truncate())),tolerance=1e-3)
+                # sin_expr=nsimplify(TR11(TR9(fourier_series(sin(new_expr)).truncate())),tolerance=1e-3)
+                # cos_expr=nsimplify(TR11(TR9(fourier_series(cos(new_expr)).truncate())),tolerance=1e-3)
 
-                # if nam=='ry':
-                #     U=np.array([[cos_expr,-sin_expr],[sin_expr,cos_expr]])
-                #     # print(U)
-                # if nam=='rz':
-                #     U=np.array([[cos_expr-1j*sin_expr,0],[0,cos_expr+1j*sin_expr]])
-                #     # print(U)
-                #     if cong==True:
-                #         U=np.array([[cos_expr+1j*sin_expr,0],[0,cos_expr-1j*sin_expr]])
-                # if nam=='rx':
-                #     U=np.array([[cos_expr,-1j*sin_expr],[-1j*sin_expr,cos_expr]])
-                #     # print(U)
-                #     if cong==True:
-                #         U=np.array([[cos_expr,1j*sin_expr],[1j*sin_expr,cos_expr]])
+                sin_expr=sin(new_expr).expand(trig=True)
+                cos_expr=cos(new_expr).expand(trig=True)
 
-                if coeff > 0:
-                    sins=sin_expr
-                    coss=cos_expr
-                if coeff < 0:
-                    sins=-sin_expr
-                    coss=cos_expr
-
+                # if coeff > 0:
+                #     sins=sin_expr
+                #     coss=cos_expr
+                # if coeff < 0:
+                #     sins=-sin_expr
+                #     coss=cos_expr
 
                 if nam=='ry':
-                    U=np.linalg.matrix_power(np.array([[coss,-sins],[sins,coss]]),abs(coeff))
+                    U=np.array([[cos_expr,-sin_expr],[sin_expr,cos_expr]])
                 if nam=='rz':
-                    U=np.linalg.matrix_power(np.array([[coss-1j*sins,0],[0,coss+1j*sins]]),abs(coeff))
+                    U=np.array([[cos_expr-1j*sin_expr,0],[0,cos_expr+1j*sin_expr]])
                     if cong==True:
-                        U=np.linalg.matrix_power(np.array([[coss+1j*sins,0],[0,coss-1j*sins]]),abs(coeff))
+                        U=np.array([[cos_expr+1j*sin_expr,0],[0,cos_expr-1j*sin_expr]])
                 if nam=='rx':
-                    U=np.linalg.matrix_power(np.array([[coss,-1j*sins],[-1j*sins,coss]]),abs(coeff))
+                    U=np.array([[cos_expr,-1j*sin_expr],[-1j*sin_expr,cos_expr]])
                     if cong==True:
-                        U=np.linalg.matrix_power(np.array([[coss,1j*sins],[1j*sins,coss]]),abs(coeff))
+                        U=np.array([[cos_expr,1j*sin_expr],[1j*sin_expr,cos_expr]])
+
+                # if nam=='ry':
+                #     U=np.linalg.matrix_power(np.array([[coss,-sins],[sins,coss]]),abs(coeff))
+                # if nam=='rz':
+                #     U=np.linalg.matrix_power(np.array([[coss-1j*sins,0],[0,coss+1j*sins]]),abs(coeff))
+                #     if cong==True:
+                #         U=np.linalg.matrix_power(np.array([[coss+1j*sins,0],[0,coss-1j*sins]]),abs(coeff))
+                # if nam=='rx':
+                #     U=np.linalg.matrix_power(np.array([[coss,-1j*sins],[-1j*sins,coss]]),abs(coeff))
+                #     if cong==True:
+                #         U=np.linalg.matrix_power(np.array([[coss,1j*sins],[1j*sins,coss]]),abs(coeff))
             
             else:
                 U=Operator(g[0]).data 
