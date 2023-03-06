@@ -11,10 +11,9 @@ class Tensor:
         self.index_set=index
         self.name=name
         self.qubits=qubits #This is used only when it represent a quantum gate 
-        
     def tdd(self):
         from TDD.TDD import get_tdd
-        return get_tdd(self.data,self.index_set)        
+        return get_tdd(self.data,self.index_set)
         
 class TensorNetwork:
     def __init__(self,tensors=dict(),tn_type='tn',qubits_num=0):

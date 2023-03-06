@@ -27,7 +27,15 @@ class BDD:
             self.data=data
         else:
             self.data=dict()
-        
+    @property
+    def node(self):
+        # print(self.data,type(self))
+        from functools import reduce
+        return reduce(lambda a,b:a+b , self.data.keys())
+    @property
+    def weight(self):
+        return 0
+
     def __eq__(self,other):
         if self.data==other.data:
             return True
@@ -44,29 +52,34 @@ class BDD:
         return normalize_2_fun(g,self)
     def __sub__(self, g):
         return self.__add__(g.__mul__(-1))
+    def self_normalize(self, g):
+        return get_one_state(),g , self 
+    
         
-def Ini_BDD(index_order=[]):
+def Ini_BDD(index_order=[],Exp_parameters_dict={}):
     """To initialize the unique_table,computed_table and set up a global index order"""
-    global global_node_idx, var_num
+    global global_node_idx, var_num, parameters_dict, parameter_num
+    
     
     set_index_order(index_order)
-    
     var_num = len(index_order)
+    parameters_dict=Exp_parameters_dict
+    parameter_num=len(parameters_dict)
 
 def get_one_state():
-    data={tuple([0]*(index_order+1)):1}
+    data={tuple([0]*(parameter_num+1)):1}
     tdd = BDD(data)
     return tdd
 
 def get_zero_state():
-    data={tuple([0]*(index_order+1)):0}
+    data={tuple([0]*(parameter_num+1)):0}
     tdd = BDD(data)
     return tdd
 
 def get_const_state(w):
     r=np.abs(w)
     theta = np.angle(w)
-    key = [0]*(index_order+1)
+    key = [0]*(parameter_num+1)
     key[-1] = theta
     data = {tuple(key):r}
     tdd = BDD(data)
@@ -97,36 +110,35 @@ def get_bdd(f):
     if isinstance(f,int) or isinstance(f,float) or isinstance(f,complex):
         tdd=get_const_state(f)
         return tdd
-    try:
-        f.args
-    except:
-        tdd=get_const_state(f)
-        return tdd
+    if isinstance(f,BDD):
+        return f
+    print(f)
+
+    def extract_expr(param):
+        if len(param.parameters)==0:
+            return None, None, float(param)
+        p=tuple(param.parameters)[0]
+        const=param.bind({p:0})
+        const=const.sympify().simplify()
+        coeff=param.bind({p:1}).sympify()-const
+        coeff=coeff.simplify()
+        return float(coeff), p, float(const)
+    # expr= [extract_expr(item) for item in g[0].params]
+
+    def construct_exp_expr(coeff,p,const):
+        r=np.abs(const)
+        theta = np.angle(const)
+        temp=[0]*parameter_num+[theta]
+        if p:
+            pos=parameters_dict[p]
+            temp[pos]=coeff
+        from TDD.Exp.EXP import BDD
+        return BDD({tuple(temp):r})
     
-    if len(f.args)==0:
-        tdd=get_const_state(complex(f))
-        return tdd
-    
-    
-    #need to be motified
-    
-    if len(f.args)==1:
-        tdd=normalize(str(f),[[1,1,Find_Or_Add_Unique_table(-1)]])
-        return tdd
-    
-    if isinstance(f,sy.add.Add):
-        tdd=get_zero_state()
-        for add_term in f.args:
-            temp_tdd=get_bdd(add_term)
-            tdd=add(tdd,temp_tdd)
-    elif isinstance(f,sy.mul.Mul):
-        tdd=get_one_state()
-        for mul_term in f.args:
-            temp_tdd=get_bdd(mul_term)
-            tdd=mul(tdd,temp_tdd)
-            
-           
-    return tdd
+    def angle_mul(theta, scale):
+        return [theta[0]*scale,theta[1],theta[2]*scale]
+
+    return BDD(f)
 
 
 def add(tdd1,tdd2):
@@ -164,7 +176,7 @@ def mul(tdd1,tdd2):
     
     for term1 in tdd1.data:
         for term2 in tdd2.data:
-            t=[k1+k2 for k1,k2 in term1,term2]
+            t=[term1[i]+term2[i] for i in range(len(term1))]
             t=tuple(t)
             if t in data:
                 data[t]+=tdd1.data[term1]*tdd2.data[term2]

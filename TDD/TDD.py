@@ -132,7 +132,7 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
             
 
         
-def Ini_TDD(index_order=[],var=[],n=50,type=None,unique_table_reset=True):
+def Ini_TDD(index_order=[],var=[],Exp_parameters_dict=None,n=50,type=None,unique_table_reset=True):
     """To initialize the unique_table,computed_table and set up a global index order"""
     global computed_table
     global unique_table
@@ -147,15 +147,23 @@ def Ini_TDD(index_order=[],var=[],n=50,type=None,unique_table_reset=True):
     if type=='TrDD':
         from TDD.TrDD.BDD import get_bdd,Ini_BDD
         tdd_type='TrDD'
-  
+    if type=='Exp':
+        from TDD.Exp.EXP import get_bdd,Ini_BDD
+        tdd_type='Exp'
+
+
     if unique_table_reset==True:
         global_node_idx=0
         unique_table = dict()  
         computed_table = dict()
+        
         if tdd_type:
             if not var:
                 var=['x'+str(k) for k in range(n-1,-1,-1)]
-            Ini_BDD(var) 
+            if tdd_type=='Exp':
+                Ini_BDD(var,Exp_parameters_dict)
+            else:
+                Ini_BDD(var) 
     add_find_time=0
     add_hit_time=0
     cont_find_time=0
@@ -587,6 +595,8 @@ def normalize(x,the_successors,combine=False):
             # print('TDD 557')
             return normalise_line_combine2(x,the_successors[0],the_successors[1])
     [a,b,c]=the_successors[1].weight.self_normalize(the_successors[0].weight)
+    # [a,b,c]=[S_one,the_successors[0].weight,the_successors[1].weight]
+
 
     succ_nodes=[succ.node for succ in the_successors]
     node=Find_Or_Add_Unique_table(x,[b,c],succ_nodes)
@@ -692,7 +702,8 @@ def np_2_tdd(U,order=[],key_width=True):
         from TDD.SymTDD.BDD import get_bdd
     if tdd_type=='TrDD':
         from TDD.TrDD.BDD import get_bdd
-
+    if tdd_type=="Exp":
+        from TDD.Exp.EXP import get_bdd
     U_dim=U.ndim
     U_shape=U.shape
     if sum(U_shape)==U_dim:

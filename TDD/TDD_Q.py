@@ -278,11 +278,11 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
     start_tensors= dict()
     end_tensors = dict()
     
-    from qiskit import transpile
-    cir=transpile(cir,basis_gates=['cx','u'],optimization_level=0)
+    # from qiskit import transpile
+    # cir=transpile(cir,basis_gates=['cx','u'],optimization_level=0)
     qubits_num=get_real_qubit_num(cir)
-    parameters_dict=dict((v,k) for k, v in dict(enumerate(cir.parameters)).items())
-    parameter_num=len(parameters_dict)
+    # parameters_dict=dict((v,k) for k, v in dict(enumerate(cir.parameters)).items())
+    # parameter_num=len(parameters_dict)
     for k in range(qubits_num):
         qubits_index[k]=0
         
@@ -339,53 +339,74 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
 
 
         if g[0].is_parameterized():
-            def extract_expr(param):
-                if len(param.parameters)==0:
-                    return None, None, param.sympify().simplify()
-                p=tuple(param.parameters)[0]
-                const=param.bind({p:0})
-                const=const.sympify().simplify()
-                coeff=param.bind({p:1}).sympify()-const
-                coeff=coeff.simplify()
-                return coeff, p, const
-            expr= [extract_expr(item) for item in g[0].params]
+            '''
+            待修改：control-U 帶變數的目前這方法還需再修正。
+            '''
+            from qiskit import QuantumCircuit,transpile
+            from qiskit import QuantumRegister
+            from qiskit.circuit.quantumregister import Qubit
+            
+            g2=gates[k].copy()
+            g2.qubits=(Qubit(QuantumRegister(1, 'q'), 0),)
+            
+            temp=QuantumCircuit(1)
+            temp.append(g2)
+            temp=transpile(temp,basis_gates='u')
+            params=temp.data[0].operation.params
+            '''
+            global phase的問題還是還沒解決
+            '''
+            
+            def u3(theta,phi,lam):
+                half_theta= theta/2
+                cos_half_theta=(exp(str(1j*half_theta))+exp(str(-1j*half_theta)))/2
+                sin_half_theta=(exp(str(1j*half_theta))-exp(str(-1j*half_theta)))/2/1j
+                return np.array([[cos_half_theta,               -exp(str(1j*lam))*sin_half_theta],
+                                [exp(str(1j*phi))*sin_half_theta,      exp(str(1j*(phi+lam)))*cos_half_theta]])
+            U=u3(*params)
+            # def extract_expr(param):
+            #     if len(param.parameters)==0:
+            #         return None, None, float(param)
+            #     p=tuple(param.parameters)[0]
+            #     const=param.bind({p:0})
+            #     const=const.sympify().simplify()
+            #     coeff=param.bind({p:1}).sympify()-const
+            #     coeff=coeff.simplify()
+            #     return float(coeff), p, float(const)
+            # expr= [extract_expr(item) for item in g[0].params]
 
-            def construct_exp_expr(coeff,p,const):
-                r=np.abs(const)
-                theta = np.angle(const)
-                temp=[0]*parameter_num+[theta]
-                if p:
-                    pos=parameters_dict[p]
-                    temp[pos]=coeff
-                from TDD.Exp.EXP import BDD
-                return BDD({temp:r})
-            # def u3(theta,phi,lam):
-            #     half_theta= theta/2
-            #     cos_half_theta=(exp(I*half_theta)+exp(-I*half_theta))/2
-            #     sin_half_theta=(exp(I*half_theta)-exp(-I*half_theta))/2/I
-            #     return np.array([[cos_half_theta,               -exp(I*lam)*sin_half_theta],
-            #                     [exp(I*phi)*sin_half_theta,      exp(I*(phi+lam))*cos_half_theta]])
-            def angle_mul(theta, scale):
-                return [theta[0]*scale,theta[1],theta[2]*scale]
+            # def construct_exp_expr(coeff,p,const):
+            #     r=np.abs(const)
+            #     theta = np.angle(const)
+            #     temp=[0]*parameter_num+[theta]
+            #     if p:
+            #         pos=parameters_dict[p]
+            #         temp[pos]=coeff
+            #     from TDD.Exp.EXP import BDD
+            #     return BDD({tuple(temp):r})
+            
+            # def angle_mul(theta, scale):
+            #     return [theta[0]*scale,theta[1],theta[2]*scale]
 
-            def u3_exp(theta,phi,lam):
-                half_theta=angle_mul(theta,I/2)
-                exp_i_half_theta=construct_exp_expr(*half_theta)
-                minus_half_theta= angle_mul(theta,-I/2)
-                exp_minus_i_half_theta=construct_exp_expr(*minus_half_theta)
+            # def u3_exp(theta,phi,lam):
+            #     half_theta=angle_mul(theta,1j/2)
+            #     exp_i_half_theta=construct_exp_expr(*half_theta)
+            #     minus_half_theta= angle_mul(theta,-1j/2)
+            #     exp_minus_i_half_theta=construct_exp_expr(*minus_half_theta)
 
-                from TDD.Exp.EXP import add, mul
+            #     from TDD.Exp.EXP import add, mul
 
-                cos_half_theta=mul(0.5,add(exp_i_half_theta,exp_minus_i_half_theta))
-                sin_half_theta=mul(-0.5*I,add(exp_i_half_theta,mul(-1,exp_minus_i_half_theta)))
+            #     cos_half_theta=mul(0.5,add(exp_i_half_theta,exp_minus_i_half_theta))
+            #     sin_half_theta=mul(-0.5j,add(exp_i_half_theta,mul(-1,exp_minus_i_half_theta)))
 
-                exp_i_lam=construct_exp_expr(*lam)
-                exp_i_phi=construct_exp_expr(*phi)
+            #     exp_i_lam=construct_exp_expr(*lam)
+            #     exp_i_phi=construct_exp_expr(*phi)
                 
 
-                return np.array([[cos_half_theta,              mul(-1.0,exp_i_lam)*sin_half_theta],
-                                [exp_i_phi*sin_half_theta,      exp_i_lam*exp_i_phi*cos_half_theta]])
-            U=u3_exp(*expr)
+            #     return np.array([[cos_half_theta,              mul(-1.0,exp_i_lam)*sin_half_theta],
+            #                     [exp_i_phi*sin_half_theta,      exp_i_lam*exp_i_phi*cos_half_theta]])
+            # U=u3_exp(*expr)
+            
         else:
             U=g[0].to_matrix()
 
