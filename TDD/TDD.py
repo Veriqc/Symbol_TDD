@@ -132,7 +132,7 @@ def layout(node,key_2_idx,dot=Digraph(),succ=[],real_label=True):
             
 
         
-def Ini_TDD(index_order=[],var=[],Exp_parameters_dict=None,n=50,type=None,unique_table_reset=True):
+def Ini_TDD(index_order=[],var=[],n=50,type=None,unique_table_reset=True):
     """To initialize the unique_table,computed_table and set up a global index order"""
     global computed_table
     global unique_table
@@ -160,10 +160,7 @@ def Ini_TDD(index_order=[],var=[],Exp_parameters_dict=None,n=50,type=None,unique
         if tdd_type:
             if not var:
                 var=['x'+str(k) for k in range(n-1,-1,-1)]
-            if tdd_type=='Exp':
-                Ini_BDD(var,Exp_parameters_dict)
-            else:
-                Ini_BDD(var) 
+            Ini_BDD(var) 
     add_find_time=0
     add_hit_time=0
     cont_find_time=0

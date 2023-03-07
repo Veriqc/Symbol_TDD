@@ -6,7 +6,7 @@ from graphviz import Digraph
 from IPython.display import Image
 from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
-import sympy as sy
+import sympy as sp
 
 
 """Define global variables"""
@@ -35,6 +35,8 @@ class BDD:
     @property
     def weight(self):
         return 0
+    def __repr__(self) -> str:
+        return str(self.data)
 
     def __eq__(self,other):
         if self.data==other.data:
@@ -52,34 +54,39 @@ class BDD:
         return normalize_2_fun(g,self)
     def __sub__(self, g):
         return self.__add__(g.__mul__(-1))
+    
     def self_normalize(self, g):
         return get_one_state(),g , self 
     
         
-def Ini_BDD(index_order=[],Exp_parameters_dict={}):
+def Ini_BDD(index_order=[]):
     """To initialize the unique_table,computed_table and set up a global index order"""
-    global global_node_idx, var_num, parameters_dict, parameter_num
+    global global_index_order, var_num
     
-    
+    print('EXP 63', index_order)
     set_index_order(index_order)
+    print('EXP 65', global_index_order)
     var_num = len(index_order)
-    parameters_dict=Exp_parameters_dict
-    parameter_num=len(parameters_dict)
+
 
 def get_one_state():
-    data={tuple([0]*(parameter_num+1)):1}
+    data={tuple([0]*(var_num+1)):1}
     tdd = BDD(data)
     return tdd
-
+'''
+要改get zero state, add 函數 (0) 
+'''
 def get_zero_state():
-    data={tuple([0]*(parameter_num+1)):0}
+    data={tuple([0]*(var_num+1)):0}
     tdd = BDD(data)
     return tdd
 
 def get_const_state(w):
+    w=complex(w)
+    # print('EXP 79',w)
     r=np.abs(w)
     theta = np.angle(w)
-    key = [0]*(parameter_num+1)
+    key = [0]*(var_num+1)
     key[-1] = theta
     data = {tuple(key):r}
     tdd = BDD(data)
@@ -93,7 +100,7 @@ def set_index_order(var_order):
             global_index_order[var_order[k]]=k
     if isinstance(var_order,dict):
         global_index_order = copy.copy(var_order)
-    global_index_order[-1] = float('inf')
+    global_index_order[1] = var_num
     
 def get_index_order():
     global global_index_order
@@ -112,33 +119,54 @@ def get_bdd(f):
         return tdd
     if isinstance(f,BDD):
         return f
-    print(f)
-
-    def extract_expr(param):
-        if len(param.parameters)==0:
-            return None, None, float(param)
-        p=tuple(param.parameters)[0]
-        const=param.bind({p:0})
-        const=const.sympify().simplify()
-        coeff=param.bind({p:1}).sympify()-const
-        coeff=coeff.simplify()
-        return float(coeff), p, float(const)
-    # expr= [extract_expr(item) for item in g[0].params]
-
-    def construct_exp_expr(coeff,p,const):
-        r=np.abs(const)
-        theta = np.angle(const)
-        temp=[0]*parameter_num+[theta]
-        if p:
-            pos=parameters_dict[p]
-            temp[pos]=coeff
-        from TDD.Exp.EXP import BDD
-        return BDD({tuple(temp):r})
+    print(f,type(f))
     
-    def angle_mul(theta, scale):
-        return [theta[0]*scale,theta[1],theta[2]*scale]
-
-    return BDD(f)
+    if len(f.args)==0:
+        tdd=get_const_state(f)
+        return tdd
+    
+    if len(f.args)==1:
+        def get_item(f):
+            expr=f.args[0]
+            dict1=dict()
+            dict2=dict()
+            for item in expr.free_symbols:
+                print(item)
+                dict1[item]=expr.coeff(item)
+                dict2[item]=0
+            dict1[1]=expr.subs(dict2)
+            return dict1
+        dict1=get_item(f)
+        data=[0]*(var_num+1)
+        print('EXP 135',data)
+        print('EXP 136',dict1)
+        # print('EXP 137',type(global_index_order.keys()[0]))
+        for key in dict1.keys():
+            print('EXP 139',type(key))
+            data[global_index_order[key]]=dict1[key]
+        dict2={tuple(data):1}
+        tdd = BDD(dict2)
+        return tdd
+    if isinstance(f,sp.core.add.Add):
+    # if isinstance(f,sp.add.Add):
+        tdd=get_zero_state()
+        for add_term in f.args:
+            temp_tdd=get_bdd(add_term)
+            tdd=add(tdd,temp_tdd)
+    elif isinstance(f,sp.core.mul.Mul):
+    # elif isinstance(f,sp.mul.Mul):
+        tdd=get_one_state()
+        for mul_term in f.args:
+            temp_tdd=get_bdd(mul_term)
+            tdd=mul(tdd,temp_tdd)
+    elif isinstance(f,sp.core.power.Pow):
+    # elif isinstance(f,sp.power.Pow):
+        tdd=get_one_state()
+        pow= f.args[1]
+        for mul_times in range(pow):
+            temp_tdd=get_bdd(f.args[0])
+            tdd=mul(tdd,temp_tdd)
+    return tdd
 
 
 def add(tdd1,tdd2):

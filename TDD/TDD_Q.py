@@ -281,7 +281,7 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
     # from qiskit import transpile
     # cir=transpile(cir,basis_gates=['cx','u'],optimization_level=0)
     qubits_num=get_real_qubit_num(cir)
-    # parameters_dict=dict((v,k) for k, v in dict(enumerate(cir.parameters)).items())
+    parameters_dict=dict((v,k) for k, v in dict(enumerate(cir.parameters)).items())
     # parameter_num=len(parameters_dict)
     for k in range(qubits_num):
         qubits_index[k]=0
@@ -359,10 +359,12 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             
             def u3(theta,phi,lam):
                 half_theta= theta/2
-                cos_half_theta=(exp(str(1j*half_theta))+exp(str(-1j*half_theta)))/2
-                sin_half_theta=(exp(str(1j*half_theta))-exp(str(-1j*half_theta)))/2/1j
-                return np.array([[cos_half_theta,               -exp(str(1j*lam))*sin_half_theta],
-                                [exp(str(1j*phi))*sin_half_theta,      exp(str(1j*(phi+lam)))*cos_half_theta]])
+                cos_half_theta=exp(str(1j*half_theta))/2+exp(str(-1j*half_theta))/2
+                sin_half_theta=exp(str(1j*half_theta))/2j-exp(str(-1j*half_theta))/2j
+                # return np.array([[cos_half_theta,               -exp(str(1j*lam))*sin_half_theta],
+                #                 [exp(str(1j*phi))*sin_half_theta,      exp(str(1j*(phi+lam)))*cos_half_theta]])
+                return np.array([[cos_half_theta,               exp(str(-1j*half_theta+1j*lam))/2j-exp(str(1j*half_theta+1j*lam))/2j],
+                                [-exp(str(-1j*half_theta+1j*phi))/2j+exp(str(1j*half_theta+1j*phi))/2j,      exp(str(1j*half_theta+1j*phi+1j*lam))/2+exp(str(-1j*half_theta+1j*phi+1j*lam))/2]])
             U=u3(*params)
             # def extract_expr(param):
             #     if len(param.parameters)==0:
@@ -373,7 +375,7 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             #     coeff=param.bind({p:1}).sympify()-const
             #     coeff=coeff.simplify()
             #     return float(coeff), p, float(const)
-            # expr= [extract_expr(item) for item in g[0].params]
+            # expr= [extract_expr(item) for item in params]
 
             # def construct_exp_expr(coeff,p,const):
             #     r=np.abs(const)
