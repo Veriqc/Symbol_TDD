@@ -353,18 +353,16 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             temp.append(g2)
             temp=transpile(temp,basis_gates='u')
             params=temp.data[0].operation.params
-            '''
-            global phase的問題還是還沒解決
-            '''
+            global_phase=temp.global_phase
             
             def u3(theta,phi,lam):
                 half_theta= theta/2
-                cos_half_theta=exp(str(1j*half_theta))/2+exp(str(-1j*half_theta))/2
-                sin_half_theta=exp(str(1j*half_theta))/2j-exp(str(-1j*half_theta))/2j
+                # cos_half_theta=exp(str(1j*half_theta))/2+exp(str(-1j*half_theta))/2
+                # sin_half_theta=exp(str(1j*half_theta))/2j-exp(str(-1j*half_theta))/2j
                 # return np.array([[cos_half_theta,               -exp(str(1j*lam))*sin_half_theta],
                 #                 [exp(str(1j*phi))*sin_half_theta,      exp(str(1j*(phi+lam)))*cos_half_theta]])
-                return np.array([[cos_half_theta,               exp(str(-1j*half_theta+1j*lam))/2j-exp(str(1j*half_theta+1j*lam))/2j],
-                                [-exp(str(-1j*half_theta+1j*phi))/2j+exp(str(1j*half_theta+1j*phi))/2j,      exp(str(1j*half_theta+1j*phi+1j*lam))/2+exp(str(-1j*half_theta+1j*phi+1j*lam))/2]])
+                return np.array([[exp(str(1j*half_theta+1j*global_phase))/2+exp(str(-1j*half_theta+1j*global_phase))/2,               exp(str(-1j*half_theta+1j*lam))/2j-exp(str(1j*half_theta+1j*lam))/2j],
+                                [-exp(str(-1j*half_theta+1j*phi))/2j+exp(str(1j*half_theta+1j*phi))/2j,      exp(str(1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2+exp(str(-1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2]])
             U=u3(*params)
             # def extract_expr(param):
             #     if len(param.parameters)==0:

@@ -7,6 +7,7 @@ from IPython.display import Image
 from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
 import sympy as sp
+import math
 
 
 """Define global variables"""
@@ -23,26 +24,35 @@ epi=0.00000001
 class BDD:
     def __init__(self,data=None):
         """An expression of c exp(\sum{b_i \theta_i})"""
-        if data:
-            self.data=data
-        else:
-            self.data=dict()
+        self.data=data if data else dict()
     @property
     def node(self):
         # print(self.data,type(self))
-        from functools import reduce
-        return reduce(lambda a,b:a+b , self.data.keys())
+        # from functools import reduce
+        l=[]
+        for k in self.data.keys():
+            l+=list(k)
+            l+=self.data[k]
+        return tuple(l)
+        
+        # return reduce(lambda a,b:a+b , self.data.keys())
+
     @property
     def weight(self):
         return 0
+    @property
+    def is_constant(self):
+        keys = list(self.data.keys())
+        return len(keys)==1 and all(keys[0][i]==0 for i in range (len(keys[0])-1))
+    @property
+    def is_zero(self):
+        return self==BDD()
+
     def __repr__(self) -> str:
         return str(self.data)
 
     def __eq__(self,other):
-        if self.data==other.data:
-            return True
-        else:
-            return False
+        return self.data==other.data
         
     def __add__(self, g):        
         return add(self,g)
@@ -63,32 +73,27 @@ def Ini_BDD(index_order=[]):
     """To initialize the unique_table,computed_table and set up a global index order"""
     global global_index_order, var_num
     
-    print('EXP 63', index_order)
+    # print('EXP 63', index_order)
     set_index_order(index_order)
-    print('EXP 65', global_index_order)
+    # print('EXP 65', global_index_order)
     var_num = len(index_order)
 
 
 def get_one_state():
-    data={tuple([0]*(var_num+1)):1}
-    tdd = BDD(data)
-    return tdd
-'''
-要改get zero state, add 函數 (0) 
-'''
-def get_zero_state():
-    data={tuple([0]*(var_num+1)):0}
+    #key 是符號項係數，value 是 [r,theta]
+    data={tuple([0]*var_num):[1,0]}
     tdd = BDD(data)
     return tdd
 
+
 def get_const_state(w):
+    #key 是符號項係數，value 是 [r,theta]
     w=complex(w)
     # print('EXP 79',w)
     r=np.abs(w)
     theta = np.angle(w)
-    key = [0]*(var_num+1)
-    key[-1] = theta
-    data = {tuple(key):r}
+    key = [0]*(var_num)
+    data = {tuple(key):[r,theta]}
     tdd = BDD(data)
     return tdd
 
@@ -119,7 +124,6 @@ def get_bdd(f):
         return tdd
     if isinstance(f,BDD):
         return f
-    print(f,type(f))
     
     if len(f.args)==0:
         tdd=get_const_state(f)
@@ -131,36 +135,29 @@ def get_bdd(f):
             dict1=dict()
             dict2=dict()
             for item in expr.free_symbols:
-                print(item)
                 dict1[item]=expr.coeff(item)
                 dict2[item]=0
-            dict1[1]=expr.subs(dict2)
-            return dict1
-        dict1=get_item(f)
-        data=[0]*(var_num+1)
-        print('EXP 135',data)
-        print('EXP 136',dict1)
-        # print('EXP 137',type(global_index_order.keys()[0]))
+            # dict1[1]=expr.subs(dict2)
+            return dict1, complex(expr.subs(dict2))
+        dict1,c =get_item(f)
+        data=[0]*(var_num)
+
         for key in dict1.keys():
-            print('EXP 139',type(key))
             data[global_index_order[key]]=dict1[key]
-        dict2={tuple(data):1}
+        dict2={tuple(data):[1,c]}
         tdd = BDD(dict2)
         return tdd
     if isinstance(f,sp.core.add.Add):
-    # if isinstance(f,sp.add.Add):
-        tdd=get_zero_state()
+        tdd=BDD()
         for add_term in f.args:
             temp_tdd=get_bdd(add_term)
             tdd=add(tdd,temp_tdd)
     elif isinstance(f,sp.core.mul.Mul):
-    # elif isinstance(f,sp.mul.Mul):
         tdd=get_one_state()
         for mul_term in f.args:
             temp_tdd=get_bdd(mul_term)
             tdd=mul(tdd,temp_tdd)
     elif isinstance(f,sp.core.power.Pow):
-    # elif isinstance(f,sp.power.Pow):
         tdd=get_one_state()
         pow= f.args[1]
         for mul_times in range(pow):
@@ -168,7 +165,12 @@ def get_bdd(f):
             tdd=mul(tdd,temp_tdd)
     return tdd
 
+def add_constant(const1:list,const2:list):
+    value=complex(const1[0]*exp(1j*const1[1])+const2[0]*exp(1j*const2[1]))
+    r=np.abs(value)
+    theta = np.angle(value)
 
+    return [r,theta]
 def add(tdd1,tdd2):
     """The apply function of two TDDs. Mostly, it is used to do addition here."""
     
@@ -179,7 +181,9 @@ def add(tdd1,tdd2):
     
     for term in tdd2.data:
         if term in data:
-            data[term]+=tdd2.data[term]
+            data[term]=add_constant(tdd1.data[term],tdd2.data[term])
+            if math.isclose(data[term][0],epi):
+                data.pop(term,None)
         else:
             data[term]=tdd2.data[term]
     
@@ -188,29 +192,45 @@ def add(tdd1,tdd2):
 
 
 def mul(tdd1,tdd2):
+    # print('191',tdd1.data)
+    # print('192',tdd2.data)
     """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
     if not isinstance(tdd1,BDD): 
         data=tdd2.data.copy()
         for k in data:
             data[k]*=tdd1
+        # print('EXP 196',data)
         return BDD(data)
     if not isinstance(tdd2,BDD):
         data=tdd1.data.copy()
         for k in data:
             data[k]*=tdd2
+        # print('EXP 202',data)
         return BDD(data)
     
     data=dict()
     
     for term1 in tdd1.data:
+        not_pop1=True
+        if math.isclose(tdd1.data[term1][0],0): #pop the zero terms
+            tdd1.data.copy().pop(term1,None)
+            not_pop1=False
         for term2 in tdd2.data:
+            not_pop2=True
+            if math.isclose(tdd2.data[term2][0],0): #pop the zero terms
+                tdd2.data.copy().pop(term2,None)
+                not_pop2=False
             t=[term1[i]+term2[i] for i in range(len(term1))]
             t=tuple(t)
-            if t in data:
-                data[t]+=tdd1.data[term1]*tdd2.data[term2]
-            else:
-                data[t]=tdd1.data[term1]*tdd2.data[term2]
+            # print('EXP 207', t)
+            if not_pop1 and not_pop2:
+                if t in data:
+                    data[t][0]*=tdd1.data[term1][0]*tdd2.data[term2][0]
+                    data[t][1]+=tdd1.data[term1][1]+tdd2.data[term2][1]
+                else:
+                    data[t]=[tdd1.data[term1][0]*tdd2.data[term2][0],tdd1.data[term1][1]+tdd2.data[term2][1]]
 
+    print('EXP 214',data)
     return BDD(data)
         
 
