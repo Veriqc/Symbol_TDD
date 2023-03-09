@@ -281,7 +281,7 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
     # from qiskit import transpile
     # cir=transpile(cir,basis_gates=['cx','u'],optimization_level=0)
     qubits_num=get_real_qubit_num(cir)
-    parameters_dict=dict((v,k) for k, v in dict(enumerate(cir.parameters)).items())
+    # parameters_dict=dict((v,k) for k, v in dict(enumerate(cir.parameters)).items())
     # parameter_num=len(parameters_dict)
     for k in range(qubits_num):
         qubits_index[k]=0

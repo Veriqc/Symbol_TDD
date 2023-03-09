@@ -29,7 +29,7 @@ class BDD:
     @property
     def node(self):
         """Convert to hashable tuple"""
-        print(tuple(self.data.items()))
+        # print(tuple(self.data.items()))
         return tuple(self.data.items())
 
     @property
@@ -85,13 +85,13 @@ def get_one_state():
     data = {tuple([0]*var_num):(1, 0)}
     return BDD(data)
 
-def get_const_state(w):
+def get_const_state(value):
     #key 是符號項係數，value 是 [r,theta]
-    w = complex(w)
-    r, theta = complex_to_polar(w)
+    value = complex(value)
+    r, theta = complex_to_polar(value)
     key = [0]*(var_num)
-    data = {tuple(key):(r, theta)}
-    return BDD(data)
+    # data = {tuple(key):(r, theta)}
+    return BDD({} if math.isclose(r, 0, abs_tol=epi) else {tuple(key):(r, theta)})
 
 def set_index_order(var_order):
     global global_index_order
@@ -120,28 +120,22 @@ def get_bdd(f):
     elif isinstance(f, (int, float, complex)) or len(f.args) == 0:
         return get_const_state(f)
     elif len(f.args) == 1:
-
+        # print(f.args[0])
         def get_item(expr):
             dict1 = dict()
             dict2 = dict()
             for item in expr.free_symbols:
                 dict1[item] = expr.coeff(item)
                 dict2[item] = 0
-            return dict1, complex(expr.subs(dict2))
+            return dict1, complex(expr.subs(dict2)).imag
         
-        dict1, c = get_item(f.args[0])
+        dict1, theta = get_item(f.args[0])
         data = [0]*(var_num)
 
         for key in dict1.keys():
             data[global_index_order[key]] = dict1[key]
 
-        r, theta = complex_to_polar(c)
-        print('r', r)
-        assert(math.isclose(r, 1.0))
-
-        dict2 = {tuple(data):(1.0, theta)}
-
-        return BDD(dict2)
+        return BDD({tuple(data):(1, theta)})
     
     if isinstance(f, sp.core.add.Add):
         tdd = BDD()
@@ -164,7 +158,8 @@ def get_bdd(f):
 def add_constant(const1:tuple, const2:tuple):
     value = complex(const1[0]*exp(1j*const1[1])+const2[0]*exp(1j*const2[1]))
     r, theta = complex_to_polar(value)
-    return (r, theta)
+    
+    return (np.round(r,int(-np.log10(epi))), np.round(theta,int(-np.log10(epi))))
 
 def add(tdd1, tdd2):
     """The apply function of two TDDs. Mostly, it is used to do addition here."""
@@ -177,53 +172,47 @@ def add(tdd1, tdd2):
 
     data = copy.copy(tdd1.data)
     data.update(tdd2.data)
-    
+    # print('EXP 175' , data)
     for term in keys_intersect:
         value = add_constant(tdd1.data[term], tdd2.data[term])
-        if not math.isclose(value[0], epi):
+        if not math.isclose(value[0], 0 , abs_tol=epi):
             data[term] = value 
         else:
             data.pop(term)
-    
+    # print('EXP 182',data)
     return BDD(data)
 
 def mul(tdd1, tdd2):
     # print('191',tdd1.data)
     # print('192',tdd2.data)
     """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
-    if not isinstance(tdd1,BDD): 
-        data=tdd2.data.copy()
-        for k in data:
-            data[k]*=tdd1
-        # print('EXP 196',data)
-        return BDD(data)
-    if not isinstance(tdd2,BDD):
-        data=tdd1.data.copy()
-        for k in data:
-            data[k]*=tdd2
-        # print('EXP 202',data)
-        return BDD(data)
+    # if not isinstance(tdd1,BDD): 
+    #     data=tdd2.data.copy()
+    #     for k in data:
+    #         data[k]*=tdd1
+    #     return BDD(data)
+    # if not isinstance(tdd2,BDD):
+    #     data=tdd1.data.copy()
+    #     for k in data:
+    #         data[k]*=tdd2
+    #     return BDD(data)
     
     data=dict()
     
     for term1 in tdd1.data:
-        not_pop1=True
-        if math.isclose(tdd1.data[term1][0],0): #pop the zero terms
-            not_pop1=False
         for term2 in tdd2.data:
-            not_pop2=True
-            if math.isclose(tdd2.data[term2][0],0): #pop the zero terms
-                not_pop2=False
-            t=[term1[i]+term2[i] for i in range(len(term1))]
-            t=tuple(t)
-            if not_pop1 and not_pop2:
-                new_r = tdd1.data[term1][0]*tdd2.data[term2][0]
-                new_theta = tdd1.data[term1][1]+tdd2.data[term2][1]
-                if t in data:
-                    data[t] = (data[t][0]*new_r, data[t][1]+new_theta)
-                else:
-                    data[t] = (new_r, new_theta)
+            t=tuple(term1[i]+term2[i] for i in range(len(term1)))
+            new_r = tdd1.data[term1][0]*tdd2.data[term2][0]
+            new_theta = tdd1.data[term1][1]+tdd2.data[term2][1]
 
+            if t in data:
+                new_r, new_theta = add_constant(data[t],(new_r,new_theta))
+
+            if not math.isclose(new_r, 0, abs_tol=epi): 
+                data[t] = (new_r, new_theta) 
+            else:
+                data.pop(t) 
+    # print('EXP 232',data)
     return BDD(data)
         
 
