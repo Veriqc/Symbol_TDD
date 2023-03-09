@@ -75,21 +75,23 @@ def Ini_BDD(index_order=[]):
 
     var_num = len(index_order)
 
+def complex_to_polar(c):
+    r = np.abs(c)
+    theta = np.angle(c)
+    return r, theta
+
 def get_one_state():
     #key 是符號項係數，value 是 [r,theta]
-    data={tuple([0]*var_num):(1,0)}
-    tdd = BDD(data)
-    return tdd
+    data = {tuple([0]*var_num):(1, 0)}
+    return BDD(data)
 
 def get_const_state(w):
     #key 是符號項係數，value 是 [r,theta]
-    w=complex(w)
-    r=np.abs(w)
-    theta = np.angle(w)
+    w = complex(w)
+    r, theta = complex_to_polar(w)
     key = [0]*(var_num)
-    data = {tuple(key):(r,theta)}
-    tdd = BDD(data)
-    return tdd
+    data = {tuple(key):(r, theta)}
+    return BDD(data)
 
 def set_index_order(var_order):
     global global_index_order
@@ -108,85 +110,84 @@ def get_index_order():
 def get_int_key(weight):
     """To transform a complex number to a tuple with int values"""
     global epi
-    return (int(round(weight.real/epi)) ,int(round(weight.imag/epi)))
+    return ( int(round(weight.real/epi)), int(round(weight.imag/epi)) )
 
 def get_bdd(f):
-    global global_index_order 
-    if isinstance(f,int) or isinstance(f,float) or isinstance(f,complex):
-        tdd=get_const_state(f)
-        return tdd
-        
-    if isinstance(f,BDD):
+    global global_index_order
+
+    if isinstance(f, BDD):
         return f
-    
-    if len(f.args)==0:
-        tdd=get_const_state(f)
-        return tdd
-    
-    if len(f.args)==1:
-        def get_item(f):
-            expr=f.args[0]
-            dict1=dict()
-            dict2=dict()
+    elif isinstance(f, (int, float, complex)) or len(f.args) == 0:
+        return get_const_state(f)
+    elif len(f.args) == 1:
+
+        def get_item(expr):
+            dict1 = dict()
+            dict2 = dict()
             for item in expr.free_symbols:
-                dict1[item]=expr.coeff(item)
-                dict2[item]=0
-            # dict1[1]=expr.subs(dict2)
+                dict1[item] = expr.coeff(item)
+                dict2[item] = 0
             return dict1, complex(expr.subs(dict2))
-        dict1,c =get_item(f)
-        data=[0]*(var_num)
+        
+        dict1, c = get_item(f.args[0])
+        data = [0]*(var_num)
 
         for key in dict1.keys():
-            data[global_index_order[key]]=dict1[key]
-        dict2={tuple(data):(1,c)}
-        tdd = BDD(dict2)
-        return tdd
-    if isinstance(f,sp.core.add.Add):
-        tdd=BDD()
+            data[global_index_order[key]] = dict1[key]
+
+        r, theta = complex_to_polar(c)
+        print('r', r)
+        assert(math.isclose(r, 1.0))
+
+        dict2 = {tuple(data):(1.0, theta)}
+
+        return BDD(dict2)
+    
+    if isinstance(f, sp.core.add.Add):
+        tdd = BDD()
         for add_term in f.args:
-            temp_tdd=get_bdd(add_term)
-            tdd=add(tdd,temp_tdd)
-    elif isinstance(f,sp.core.mul.Mul):
-        tdd=get_one_state()
+            temp_tdd = get_bdd(add_term)
+            tdd = add(tdd, temp_tdd)
+    elif isinstance(f, sp.core.mul.Mul):
+        tdd = get_one_state()
         for mul_term in f.args:
-            temp_tdd=get_bdd(mul_term)
-            tdd=mul(tdd,temp_tdd)
-    elif isinstance(f,sp.core.power.Pow):
-        tdd=get_one_state()
-        pow= f.args[1]
+            temp_tdd = get_bdd(mul_term)
+            tdd = mul(tdd, temp_tdd)
+    elif isinstance(f, sp.core.power.Pow):
+        tdd = get_one_state()
+        pow = f.args[1]
         for mul_times in range(pow):
-            temp_tdd=get_bdd(f.args[0])
-            tdd=mul(tdd,temp_tdd)
+            temp_tdd = get_bdd(f.args[0])
+            tdd = mul(tdd, temp_tdd)
     return tdd
 
 def add_constant(const1:tuple, const2:tuple):
-    value=complex(const1[0]*exp(1j*const1[1])+const2[0]*exp(1j*const2[1]))
-    r=np.abs(value)
-    theta = np.angle(value)
-
+    value = complex(const1[0]*exp(1j*const1[1])+const2[0]*exp(1j*const2[1]))
+    r, theta = complex_to_polar(value)
     return (r, theta)
 
-def add(tdd1,tdd2):
+def add(tdd1, tdd2):
     """The apply function of two TDDs. Mostly, it is used to do addition here."""
     
-    if len(tdd2.data)>len(tdd1.data):
-        return add(tdd2,tdd1)
+    ### Necessary?
+    # if len(tdd2.data) > len(tdd1.data):
+    #     return add(tdd2,tdd1)
     
-    data=copy.copy(tdd1.data)
+    keys_intersect = tdd1.data.keys() & tdd2.data.keys()
+
+    data = copy.copy(tdd1.data)
+    data.update(tdd2.data)
     
-    for term in tdd2.data:
-        if term in data:
-            data[term]=add_constant(tdd1.data[term],tdd2.data[term])
-            if math.isclose(data[term][0],epi):
-                data.pop(term,None)
+    for term in keys_intersect:
+        value = add_constant(tdd1.data[term], tdd2.data[term])
+        if not math.isclose(value[0], epi):
+            data[term] = value 
         else:
-            data[term]=tdd2.data[term]
+            data.pop(term)
     
     return BDD(data)
 
-
-
-def mul(tdd1,tdd2):
+def mul(tdd1, tdd2):
     # print('191',tdd1.data)
     # print('192',tdd2.data)
     """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
