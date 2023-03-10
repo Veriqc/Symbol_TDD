@@ -342,6 +342,7 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             '''
             待修改：control-U 帶變數的目前這方法還需再修正。
             '''
+            
             from qiskit import QuantumCircuit,transpile
             from qiskit import QuantumRegister
             from qiskit.circuit.quantumregister import Qubit
@@ -355,6 +356,14 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             params=temp.data[0].operation.params
             global_phase=temp.global_phase
             
+            new_params=[]
+            for item in params:
+                # s=symbols(list(item.parameters)[0].name.replace("[","").replace("]",""))
+                sp_expr=sympify(str(item).replace("[","").replace("]",""))
+                new_params.append(sp_expr)
+
+            print('TDD Q 365',new_params)
+
             def u3(theta,phi,lam):
                 half_theta= theta/2
                 # cos_half_theta=exp(str(1j*half_theta))/2+exp(str(-1j*half_theta))/2
@@ -363,7 +372,10 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
                 #                 [exp(str(1j*phi))*sin_half_theta,      exp(str(1j*(phi+lam)))*cos_half_theta]])
                 return np.array([[exp(str(1j*half_theta+1j*global_phase))/2+exp(str(-1j*half_theta+1j*global_phase))/2,               exp(str(-1j*half_theta+1j*lam))/2j-exp(str(1j*half_theta+1j*lam))/2j],
                                 [-exp(str(-1j*half_theta+1j*phi))/2j+exp(str(1j*half_theta+1j*phi))/2j,      exp(str(1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2+exp(str(-1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2]])
-            U=u3(*params)
+            # U=u3(*params)
+            
+            U=u3(*new_params)
+            print(U)
             # def extract_expr(param):
             #     if len(param.parameters)==0:
             #         return None, None, float(param)

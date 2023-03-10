@@ -57,14 +57,34 @@ class BDD:
     def __mul__(self, g):
         return mul(self, g)
     
-    def __div__(self, g):
-        return normalize_2_fun(g, self)
+    # def __div__(self, g):
+    #     return normalize_2_fun(g, self)
     
     def __sub__(self, g):
         return self.__add__(g.__mul__(-1))
     
     def self_normalize(self, g):
-        return get_one_state(), g, self 
+        # self/g
+        if g.is_zero:
+            return self, g, get_one_state()
+
+        key1=min(g.data.keys())
+
+        item={key1:g.data[key1]}
+
+        def div_item (data, item):
+            dict1={}
+            key=list(item.keys())[0]
+            for K in data.keys():
+                new_key=tuple([K[i] - key[i] for i in range(len(key))])
+                value = (data[K][0]/item[key][0],data[K][1]-item[key][1] ) 
+                dict1[new_key]=value
+            return dict1
+
+        r = div_item(self.data, item)
+        l = div_item(g.data, item)
+
+        return BDD(item), BDD(l) , BDD(r)
     
         
 def Ini_BDD(index_order=[]):
@@ -125,9 +145,9 @@ def get_bdd(f):
             dict1 = dict()
             dict2 = dict()
             for item in expr.free_symbols:
-                dict1[item] = expr.coeff(item)
+                dict1[item] = expr.coeff(item)/1j
                 dict2[item] = 0
-            return dict1, complex(expr.subs(dict2)).imag
+            return dict1, complex(expr.subs(dict2))/1j
         
         dict1, theta = get_item(f.args[0])
         data = [0]*(var_num)
