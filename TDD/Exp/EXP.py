@@ -72,7 +72,7 @@ class BDD:
 
         item={key1:g.data[key1]}
 
-        def div_item (data, item):
+        def div_item (data,item ):
             dict1={}
             key=list(item.keys())[0]
             for K in data.keys():
@@ -137,7 +137,8 @@ def get_bdd(f):
 
     if isinstance(f, BDD):
         return f
-    elif isinstance(f, (int, float, complex)) or len(f.args) == 0:
+    
+    elif not isinstance(f, sp.Basic) or len(f.args) == 0:
         return get_const_state(f)
     elif len(f.args) == 1:
         # print(f.args[0])
@@ -147,7 +148,7 @@ def get_bdd(f):
             for item in expr.free_symbols:
                 dict1[item] = expr.coeff(item)/1j
                 dict2[item] = 0
-            return dict1, complex(expr.subs(dict2))/1j
+            return dict1, float(expr.subs(dict2)/1j)
         
         dict1, theta = get_item(f.args[0])
         data = [0]*(var_num)

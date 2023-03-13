@@ -354,7 +354,7 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             temp.append(g2)
             temp=transpile(temp,basis_gates='u')
             params=temp.data[0].operation.params
-            global_phase=temp.global_phase
+            global_phase=sympify(str(temp.global_phase).replace("[","").replace("]",""))
             
             new_params=[]
             for item in params:
@@ -362,20 +362,19 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
                 sp_expr=sympify(str(item).replace("[","").replace("]",""))
                 new_params.append(sp_expr)
 
-            print('TDD Q 365',new_params)
-
             def u3(theta,phi,lam):
                 half_theta= theta/2
+                
                 # cos_half_theta=exp(str(1j*half_theta))/2+exp(str(-1j*half_theta))/2
                 # sin_half_theta=exp(str(1j*half_theta))/2j-exp(str(-1j*half_theta))/2j
                 # return np.array([[cos_half_theta,               -exp(str(1j*lam))*sin_half_theta],
                 #                 [exp(str(1j*phi))*sin_half_theta,      exp(str(1j*(phi+lam)))*cos_half_theta]])
-                return np.array([[exp(str(1j*half_theta+1j*global_phase))/2+exp(str(-1j*half_theta+1j*global_phase))/2,               exp(str(-1j*half_theta+1j*lam))/2j-exp(str(1j*half_theta+1j*lam))/2j],
-                                [-exp(str(-1j*half_theta+1j*phi))/2j+exp(str(1j*half_theta+1j*phi))/2j,      exp(str(1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2+exp(str(-1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2]])
+                # return np.array([[exp(str(1j*half_theta+1j*global_phase))/2+exp(str(-1j*half_theta+1j*global_phase))/2,               exp(str(-1j*half_theta+1j*lam))/2j-exp(str(1j*half_theta+1j*lam))/2j],
+                #                 [-exp(str(-1j*half_theta+1j*phi))/2j+exp(str(1j*half_theta+1j*phi))/2j,      exp(str(1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2+exp(str(-1j*half_theta+1j*phi+1j*lam+1j*global_phase))/2]])
+                return np.array([[exp(1j*half_theta+1j*global_phase)/2+exp(-1j*half_theta+1j*global_phase)/2,               exp(-1j*half_theta+1j*lam)/2j-exp(1j*half_theta+1j*lam)/2j],
+                                [-exp(-1j*half_theta+1j*phi)/2j+exp(1j*half_theta+1j*phi)/2j,      exp(1j*half_theta+1j*phi+1j*lam+1j*global_phase)/2+exp(-1j*half_theta+1j*phi+1j*lam+1j*global_phase)/2]])
             # U=u3(*params)
-            
             U=u3(*new_params)
-            print(U)
             # def extract_expr(param):
             #     if len(param.parameters)==0:
             #         return None, None, float(param)
