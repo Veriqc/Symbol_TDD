@@ -763,16 +763,17 @@ def np_2_tdd(U,order=[],key_width=True):
 
     
 def cont(tdd1,tdd2):
-    #找出哪些要輸出(cont)/保留(out)
-    var_cont=[var for var in tdd1.index_set if var in tdd2.index_set]
-    var_out1=[var for var in tdd1.index_set if not var in var_cont]
-    var_out2=[var for var in tdd2.index_set if not var in var_cont]
+    # find out which variables to output (cont) / keep (out)
+    
+    var_cont=[var for var in tdd1.index_set if var in tdd2.index_set] # use list comprehension to get the common variables in both TDD objects
+    var_out1=[var for var in tdd1.index_set if not var in var_cont] # use list comprehension to get the unique variables in tdd1
+    var_out2=[var for var in tdd2.index_set if not var in var_cont] # use list comprehension to get the unique variables in tdd2
 
-    var_out=var_out1+var_out2
-    var_out.sort() #Index 已含有比較大小的函數
-    var_out_idx=[var.key for var in var_out]
-    var_cont_idx=[var.key for var in var_cont]
-    var_cont_idx=[var for var in var_cont_idx if not var in var_out_idx]
+    var_out=var_out1+var_out2 # concatenate the two lists of unique variables
+    var_out.sort() # sort the list of unique variables (assuming Index has a comparison function)
+    var_out_idx=[var.key for var in var_out]  # use list comprehension to get the keys of the unique variables
+    var_cont_idx=[var.key for var in var_cont]  # use list comprehension to get the keys of the common variables
+    var_cont_idx=[var for var in var_cont_idx if not var in var_out_idx]  # filter out any keys that are also in the unique variable list
     
     idx_2_key={-1:-1}
     key_2_idx={-1:-1}
@@ -783,6 +784,10 @@ def cont(tdd1,tdd2):
             idx_2_key[var_out_idx[k]]=n
             key_2_idx[n]=var_out_idx[k]
             n+=1
+
+    # create two dictionaries to map between indices and keys for the unique variables
+    # loop backwards through the list of keys and assign them increasing values starting from 0
+
     #找key的對應
     key_2_new_key=[[],[]]
     #找cont的順序
@@ -806,10 +811,15 @@ def cont(tdd1,tdd2):
         cont_order[1].append(global_index_order[v])
     cont_order[1].append(float('inf'))
 
+    # create two lists of new keys for each TDD object by replacing the common variable keys with 'c'
+    # create two lists of order values for each TDD object by using a global index order dictionary (not defined here)
+    # append infinity to both order lists
+
     tdd=contract(tdd1,tdd2,key_2_new_key,cont_order,len(set(var_cont_idx)))
-    tdd.index_set=var_out
-    tdd.index_2_key=idx_2_key
-    tdd.key_2_index=key_2_idx
+    
+    tdd.index_set=var_out # set the index set of the output TDD object to be the list of unique variables
+    tdd.index_2_key=idx_2_key # set the index attribute of the output TDD object to be a dictionary mapping indices to keys
+    tdd.key_2_index=key_2_idx # set the key attribute of the output TDD object to be a dictionary mapping
     key_width=dict()
     for k1 in range(len(key_2_new_key[0])):
         if not key_2_new_key[0][k1]=='c' and not key_2_new_key[0][k1] ==-1:
@@ -823,20 +833,12 @@ def cont(tdd1,tdd2):
     return tdd
 
 
-def mul_weight(w1,w2):
-    res=w1*w2
+def mul_weight(weight1, weight2):
+    res=weight1 * weight2
     return res
 
-    
-
-def add_weight(w1,w2):
-#     t1=time.time()
-    res=w1+w2
-#     t=time.time()-t1
-#     if t>0.001:
-#         print('add',t)
-#         print(w1)
-#         print(w2)
+def add_weight(weight1, weight2):
+    res=weight1 + weight2
     return res
 
 def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
