@@ -134,7 +134,7 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
                 # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
                 numbers = re.findall("\d+", s)
                 return int(numbers[0])
-            if '[' in sym_str: 
+            if '[' in sym_str: #利用IndexedBase去對應qiskit生成的Parameter(θ[0])的變數
                 sym_str=sym_str.replace("[","").replace("]","")
                 sym_order=get_numbers(sym_str)
                 sym_str=sym_str.replace(str(sym_order),"")

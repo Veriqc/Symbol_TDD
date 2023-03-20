@@ -301,24 +301,6 @@ def normalize(x,the_successors):
     if not len(set(the_degrees))==len(the_degrees):
         print('Repeated degrees')
     
-    '''
-    將此sin^3以上的判斷改到mul中
-    '''    
-    # need_merge=False
-    # if isinstance(x,str) and x[:3]=='sin':
-    #     if 2 in the_degrees:
-    #         the_term=the_successors[the_degrees.index(2)]
-    #         the_successors.pop(the_degrees.index(2))
-    #         res1=BDD(the_term[2])
-    #         res1.weight=the_term[1]
-    #         temp=normalize('cos'+x[3:],[[2,-1,Find_Or_Add_Unique_table(-1)]])
-    #         res2=mul(res1,temp)
-    #         if len(the_successors)==0:
-    #             res=add(res1,res2)
-    #             return res
-    #         need_merge=True
-    
-    # weigs_abs=[np.around(abs(succ[1])/epi) for succ in the_successors]
     weigs_abs=[abs(succ[1])/epi for succ in the_successors]
     weig_max=the_successors[weigs_abs.index(max(weigs_abs))][1]
     
@@ -328,9 +310,6 @@ def normalize(x,the_successors):
     res=BDD(node)
     res.weight=weig_max
     
-    # if need_merge:
-    #     res=add(res,res1)
-    #     res=add(res,res2)
     return res
 
 def get_count():
@@ -423,22 +402,17 @@ def insert_2_computed_table(item,res):
         computed_table[the_key] = (res.weight,res.node)
 
 def get_bdd(function):
-    # print('function,type(function)',function,type(function))
     global global_index_order 
     if isinstance(function,int) or isinstance(function,float) or isinstance(function,complex):
         bdd=get_one_state()
         bdd.weight=function
         return bdd
     try:
-        # print(function.args)
         function.args
     except:
         bdd=get_one_state()
         bdd.weight=complex(function)
         return bdd
-    
-#     print(function)
-#     print(function,function.args,len(function.args))
     if len(function.args)==0:
         bdd=get_one_state()
         bdd.weight=complex(function)
@@ -450,7 +424,6 @@ def get_bdd(function):
         bdd=normalize(str(function),[[1,1,Find_Or_Add_Unique_table(-1)]])
         
         #在這把symbol次序放入
-  
         for item in function.free_symbols:
             if '[' in str(function.free_symbols):
                 if '[' in str(item):
@@ -460,7 +433,7 @@ def get_bdd(function):
 
         bdd.key_2_index['sin(%s)'%symbol_name]=global_index_order['sin(%s)'%symbol_name]
         bdd.key_2_index['cos(%s)'%symbol_name]=global_index_order['cos(%s)'%symbol_name]
-
+        print('BDD 463',bdd.key_2_index)
         return bdd
     if isinstance(function,sp.core.add.Add):
         bdd=get_zero_state()
@@ -770,13 +743,27 @@ def get_expr(node):
         return 1
     if node.expr:
         return node.expr
-    x=node.key
     
-    triangle_function=parse_expr(x)
+    # key=node.key
+    # print('BDD 748', node, type(x), x)
+    # sp_expr=parse_expr(key)
+
+    def get_numbers(s):
+        import re
+        # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
+        numbers = re.findall("\d+", s)
+        return int(numbers[0])
+    param_expr=node.key
+    sym_str=param_expr.replace('sin(','').replace('cos(','').replace('[','').replace('])','').replace(str(get_numbers(param_expr)),'')
+
+    sym_base = IndexedBase(sym_str)
+
+    sp_expr=sympify(str(param_expr), locals={sym_str: sym_base})
+    
 
     res=0
     for succ in node.successor:
-        res+=nsimplify(succ[1]*triangle_function**succ[0],tolerance=1e-3)*get_expr(succ[2])
+        res+=nsimplify(succ[1]*sp_expr**succ[0],tolerance=1e-3)*get_expr(succ[2])
         # print('BDD 757 ',res)
 
     node.expr=res
