@@ -450,11 +450,16 @@ def get_bdd(function):
         bdd=normalize(str(function),[[1,1,Find_Or_Add_Unique_table(-1)]])
         
         #在這把symbol次序放入
-        symbol_name=function.free_symbols.pop().name
+  
+        for item in function.free_symbols:
+            if '[' in str(function.free_symbols):
+                if '[' in str(item):
+                    symbol_name=item.name
+            else:
+                symbol_name=item.name
+
         bdd.key_2_index['sin(%s)'%symbol_name]=global_index_order['sin(%s)'%symbol_name]
         bdd.key_2_index['cos(%s)'%symbol_name]=global_index_order['cos(%s)'%symbol_name]
-        # print('global index order', global_index_order)
-        print("BDD 456",bdd.key_2_index)
 
         return bdd
     if isinstance(function,sp.core.add.Add):
