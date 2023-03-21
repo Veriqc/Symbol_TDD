@@ -27,15 +27,18 @@ class Node:
         self.key = key
         self.successor=[]#the element should be in this form [degree,weight,node]
         self.index_degree=dict()
-        self.expr = None
         self.value=dict()
         self.succ_num=2
-
-    def get_expr(self):
+        self._expr = None
+    def __repr__(self) -> str:
+        return str(self.expr)
+    @property
+    def expr(self):
         if self.key==-1:
             return 1
-        if self.expr:
-            return self.expr
+        if self._expr:
+            print('BDD 78',self._expr)
+            return self._expr
         
         def get_numbers(s):
             import re
@@ -49,12 +52,11 @@ class Node:
 
         sp_expr=sympify(str(param_expr), locals={sym_str: sym_base})
         
-
         res=0
         for succ in self.successor:
-            res+=nsimplify(succ[1]*sp_expr**succ[0],tolerance=1e-3)*succ[2].get_expr()
-
-        self.expr=res
+            res+=nsimplify(succ[1]*sp_expr**succ[0],tolerance=1e-3)*succ[2].expr
+        print('BDD 62',res)
+        self._expr=res
         return res
 
 
@@ -62,6 +64,7 @@ class BDD:
     def __init__(self,node):
         """BDD"""
         self._weight=1
+        self._expr=None
 
         self.key_2_index=dict()
 
@@ -69,6 +72,7 @@ class BDD:
             self.node=node
         else:
             self.node=Node(node)
+        
 
     @property
     def weight(self):
@@ -76,7 +80,6 @@ class BDD:
     @weight.setter
     def weight(self, value):
         value=[value.real,value.imag]
-
         for i in range(2):
             if math.isclose(value[i] , int(value[i]), rel_tol = epi):
                 value[i] = int(value[i])
@@ -84,8 +87,8 @@ class BDD:
                 value[i] = int(value[i]+1)
             elif math.isclose(value[i]+1 , int(value[i]+1), rel_tol = epi):
                 value[i] = int(value[i]+1)-1
-
         self._weight=value[0]+value[1]*1j
+
 
     def node_number(self):
         node_set=set()
@@ -128,8 +131,10 @@ class BDD:
     def self_normalize(self, g):
         return normalize_2_fun(g,self)
     
-    # @lru_cache(maxsize=None)
+    @property
     def expr(self):
+        if self._expr:
+            return self._expr
 
         value=[self.weight.real,self.weight.imag]
         for i in range(2):
@@ -143,9 +148,10 @@ class BDD:
         if self.node.key==-1:
             return value
         
-        res=self.node.get_expr()
-        
-        return  value*res
+        res=self.node.expr
+        print (res, value)
+        self._expr = value*res
+        return self._expr
     
     def get_value(self,val):
         res=get_value_node(self.node,val)
@@ -159,7 +165,7 @@ class BDD:
         return hash(self.__repr__())
     
     def __repr__(self):
-        return str(self.expr())
+        return str(self.expr)
         
     
 def layout(node,dot=Digraph(),succ=[]):
@@ -210,14 +216,15 @@ def Clear_BDD():
 
 def get_one_state():
     node = Find_Or_Add_Unique_table(-1)
-    tdd = BDD(node)
-    return tdd
+    bdd = BDD(node)
+    return bdd
+    # return BDD(1)
 def get_zero_state():
     node = Find_Or_Add_Unique_table(-1)
-    tdd = BDD(node)
-    tdd.weight=0
-    return tdd
-
+    bdd = BDD(node)
+    bdd.weight=0
+    return bdd
+    # return BDD(0)
 def get_unique_table():
     return unique_table
 
@@ -439,7 +446,9 @@ def get_bdd(function):
     global global_index_order 
     if isinstance(function,int) or isinstance(function,float) or isinstance(function,complex):
         bdd=get_one_state()
+        # print('BDD 448',bdd)
         bdd.weight=function
+        # print('BDD 450',bdd)
         return bdd
     try:
         function.args
