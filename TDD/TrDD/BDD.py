@@ -12,6 +12,7 @@ from functools import lru_cache
 computed_table = dict()
 unique_table = dict()
 global_index_order = dict()
+inverse_global_index_order = dict()
 global_node_idx=0
 add_find_time=0
 add_hit_time=0
@@ -37,7 +38,6 @@ class Node:
         if self.key==-1:
             return 1
         if self._expr:
-            print('BDD 78',self._expr)
             return self._expr
         
         def get_numbers(s):
@@ -55,7 +55,6 @@ class Node:
         res=0
         for succ in self.successor:
             res+=nsimplify(succ[1]*sp_expr**succ[0],tolerance=1e-3)*succ[2].expr
-        print('BDD 62',res)
         self._expr=res
         return res
 
@@ -73,7 +72,6 @@ class BDD:
         else:
             self.node=Node(node)
         
-
     @property
     def weight(self):
         return self._weight
@@ -121,12 +119,13 @@ class BDD:
         
     def __eq__(self,other):
         return self.node==other.node and math.isclose(self.weight.real, other.weight.real, rel_tol=epi) and math.isclose(self.weight.imag, other.weight.imag, rel_tol=epi)
-        
+
     def __add__(self, g):        
         return add(self,g)
     
     def __mul__(self, g):
-        return mul(self,g)
+        # return mul(self,g)
+        return cont(self, g)
     
     def self_normalize(self, g):
         return normalize_2_fun(g,self)
@@ -149,7 +148,6 @@ class BDD:
             return value
         
         res=self.node.expr
-        print (res, value)
         self._expr = value*res
         return self._expr
     
@@ -189,6 +187,7 @@ def Ini_BDD(index_order=[]):
     global unique_table
     global global_node_idx
     global add_find_time,add_hit_time,cont_find_time,cont_hit_time
+    global global_index_order, inverse_global_index_order
     global_node_idx=0
 
     unique_table = dict()
@@ -232,7 +231,7 @@ def get_unique_table_num():
     return len(unique_table)
 
 def set_index_order(var_order):
-    global global_index_order
+    global global_index_order, inverse_global_index_order
     global_index_order=dict()
     if isinstance(var_order,list):
         for k in range(len(var_order)):
@@ -240,6 +239,8 @@ def set_index_order(var_order):
     if isinstance(var_order,dict):
         global_index_order = copy.copy(var_order)
     global_index_order[-1] = float('inf')
+
+    inverse_global_index_order = {v: k for k, v in global_index_order.items()}
     
 def get_index_order():
     global global_index_order
@@ -446,9 +447,7 @@ def get_bdd(function):
     global global_index_order 
     if isinstance(function,int) or isinstance(function,float) or isinstance(function,complex):
         bdd=get_one_state()
-        # print('BDD 448',bdd)
         bdd.weight=function
-        # print('BDD 450',bdd)
         return bdd
     try:
         function.args
@@ -476,7 +475,7 @@ def get_bdd(function):
 
         bdd.key_2_index['sin(%s)'%symbol_name]=global_index_order['sin(%s)'%symbol_name]
         bdd.key_2_index['cos(%s)'%symbol_name]=global_index_order['cos(%s)'%symbol_name]
-        print('BDD 463',bdd.key_2_index)
+        # print('BDD 463',bdd.key_2_index)
         return bdd
     if isinstance(function,sp.core.add.Add):
         bdd=get_zero_state()
@@ -846,8 +845,8 @@ def var_sort (var):
 
 def cont(bdd1,bdd2):
     #找出哪些要輸出(cont)/保留(out)
-    var_out1=[var for var in bdd1.index_set ]
-    var_out2=[var for var in bdd2.index_set ]
+    var_out1=[var for var in bdd1.key_2_index.keys() ]
+    var_out2=[var for var in bdd2.key_2_index.keys() ]
 
     var_out=var_out1+var_out2
     var_out=var_sort(var_out) #Index 已含有比較大小的函數
@@ -888,12 +887,12 @@ def cont(bdd1,bdd2):
         cont_order[1].append(global_index_order[v])
     cont_order[1].append(float('inf'))
 
-    tdd=mul2(bdd1,bdd2,key_2_new_key,cont_order)
-    tdd.index_set=var_out
-    tdd.index_2_key=idx_2_key
-    tdd.key_2_index=key_2_idx
+    bdd=mul2(bdd1,bdd2,key_2_new_key,cont_order)
+    bdd.index_set=var_out
+    bdd.index_2_key=idx_2_key
+    bdd.key_2_index=key_2_idx
 
-    return tdd
+    return bdd
 
 
 def mul2(bdd1,bdd2,key_2_new_key,cont_order):
@@ -939,6 +938,7 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
     bdd1.weight=1
     bdd2.weight=1
     
+    print('BDD 942', k1)
     temp_key_2_new_key=[]
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0][:(k1+1)]]))
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1][:(k2+1)]]))
