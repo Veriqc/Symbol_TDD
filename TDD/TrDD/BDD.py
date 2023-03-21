@@ -6,6 +6,7 @@ from IPython.display import Image
 from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
 import sympy as sp
+from functools import lru_cache
 
 """Define global variables"""
 computed_table = dict()
@@ -29,6 +30,33 @@ class Node:
         self.expr = None
         self.value=dict()
         self.succ_num=2
+
+    def get_expr(self):
+        if self.key==-1:
+            return 1
+        if self.expr:
+            return self.expr
+        
+        def get_numbers(s):
+            import re
+            # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
+            numbers = re.findall("\d+", s)
+            return int(numbers[0])
+        param_expr=self.key
+        sym_str=param_expr.replace('sin(','').replace('cos(','').replace('[','').replace('])','').replace(str(get_numbers(param_expr)),'')
+
+        sym_base = IndexedBase(sym_str)
+
+        sp_expr=sympify(str(param_expr), locals={sym_str: sym_base})
+        
+
+        res=0
+        for succ in self.successor:
+            res+=nsimplify(succ[1]*sp_expr**succ[0],tolerance=1e-3)*succ[2].get_expr()
+
+        self.expr=res
+        return res
+
 
 class BDD:
     def __init__(self,node):
@@ -100,7 +128,9 @@ class BDD:
     def self_normalize(self, g):
         return normalize_2_fun(g,self)
     
+    # @lru_cache(maxsize=None)
     def expr(self):
+
         value=[self.weight.real,self.weight.imag]
         for i in range(2):
             if math.isclose(value[i] , int(value[i]), rel_tol = epi):
@@ -113,7 +143,7 @@ class BDD:
         if self.node.key==-1:
             return value
         
-        res=get_expr(self.node)
+        res=self.node.get_expr()
         
         return  value*res
     
@@ -125,8 +155,12 @@ class BDD:
         res=get_value_node2(self.node,val)
         return self.weight*res    
     
+    def __hash__(self):
+        return hash(self.__repr__())
+    
     def __repr__(self):
         return str(self.expr())
+        
     
 def layout(node,dot=Digraph(),succ=[]):
     col=['red','blue','black','green']
@@ -738,36 +772,7 @@ def normalize_2_fun(tdd1,tdd2):
     return [a,b,c]        
     
     
-def get_expr(node):
-    if node.key==-1:
-        return 1
-    if node.expr:
-        return node.expr
-    
-    # key=node.key
-    # print('BDD 748', node, type(x), x)
-    # sp_expr=parse_expr(key)
 
-    def get_numbers(s):
-        import re
-        # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
-        numbers = re.findall("\d+", s)
-        return int(numbers[0])
-    param_expr=node.key
-    sym_str=param_expr.replace('sin(','').replace('cos(','').replace('[','').replace('])','').replace(str(get_numbers(param_expr)),'')
-
-    sym_base = IndexedBase(sym_str)
-
-    sp_expr=sympify(str(param_expr), locals={sym_str: sym_base})
-    
-
-    res=0
-    for succ in node.successor:
-        res+=nsimplify(succ[1]*sp_expr**succ[0],tolerance=1e-3)*get_expr(succ[2])
-        # print('BDD 757 ',res)
-
-    node.expr=res
-    return res
 
 def get_value_node(node,val,the_key=None):
     if not the_key:

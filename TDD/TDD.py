@@ -1088,3 +1088,93 @@ def global_norm(tdd):
 
     new_tdd=normalize(node.key,tdd_list)
     return new_tdd
+
+
+def STDD_simulation(cir, Benchmark_Name=None, unique_table_reset=True, add_inputs_list=None, optimizer=None):
+    from TDD.TDD_Q import cir_2_tn,get_real_qubit_num
+    import time,csv
+    n=get_real_qubit_num(cir)
+    tn,indices=cir_2_tn(cir)
+    Parameter_num=len(cir.parameters)
+    #add y indices
+    indices2=[]
+    for i, item in enumerate(indices):
+        indices2.append(item)
+        if item[0]=='y':
+            num=int(item.replace('y',''))
+            # indices2.append('z%i'%num)
+    t_start=time.time()
+    #add sin cos indices
+
+    '''
+    TrDD process start
+    '''
+    sin_str=set()
+    cos_str=set()
+    for tensor in tn.tensors:
+        for element in tensor.data.flatten(): 
+            from sympy.core.expr import Expr 
+            if isinstance(element,Expr):
+                for symbol in element.free_symbols:
+                    if '[' in str(element.free_symbols):
+                        if '[' in str(symbol):
+                            sin_str.add('sin('+str(symbol)+')')
+                            cos_str.add('cos('+str(symbol)+')')
+                    else:
+                        sin_str.add('sin('+str(symbol)+')')
+                        cos_str.add('cos('+str(symbol)+')')
+    def get_numbers(s):
+        import re
+        # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
+        numbers = re.findall("\d+", s)
+        return int(numbers[0])
+
+    sin_str=list(sin_str)
+    sin_str.sort(key=get_numbers)
+    cos_str=list(cos_str)
+    cos_str.sort(key=get_numbers)
+    sym_str=[]
+    for i in range(len(sin_str)):
+        sym_str.append(sin_str[i])
+        sym_str.append(cos_str[i])
+    # TDD process
+    Ini_TDD(indices2,sym_str,type='TrDD',unique_table_reset=unique_table_reset)
+
+    '''
+    TrDD process end
+    '''
+
+    '''
+    EXP process start 
+    '''
+    # from sympy import Symbol
+    # parameters_dict=dict((Symbol(v.name.replace("[","").replace("]","")),k) for k, v in dict(enumerate(cir.parameters)).items())
+    # Ini_TDD(indices2,type='Exp',var=parameters_dict,unique_table_reset=unique_table_reset)
+    '''
+    EXP process end 
+    '''
+
+    if add_inputs_list:
+        from TDD.TDD_Q import add_inputs
+        # add_inputs(tn,[0]*n,n)
+        add_inputs(tn,add_inputs_list)
+
+    start_cont=time.time()-t_start
+    print('start cont ',start_cont)
+    tdd, Max_node_num=tn.cont(optimizer=optimizer,max_node=True)
+    cont_time=time.time()-start_cont-t_start
+    print('cont complete',cont_time)
+
+    from TDD.TDD import get_unique_table_num as gu1
+    from TDD.TrDD.BDD import get_unique_table_num as gu2
+    output_dict={'Benchmark Name':Benchmark_Name,
+            'Parameter num': Parameter_num,
+            'Qubit num.':tn.qubits_num,
+            'Gate num.':len(cir.data),
+            'Time':cont_time,
+            'Node num. max':Max_node_num,
+            'Node num. final':tdd.node_number(),
+            'gu1':gu1(),
+            'gu2':gu2()
+    }
+    return tdd, output_dict
