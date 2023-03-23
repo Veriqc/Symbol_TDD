@@ -34,7 +34,7 @@ class Index:
     def __lt__(self,other):
         if global_index_order[self.key] < global_index_order[other.key]:
             return True
-        elif self.key == other.key and self.idx<other.idx:
+        elif self.key == other.key and self.idx < other.idx:
             return True
         
         return False
@@ -142,7 +142,8 @@ def Ini_TDD(index_order=[],var=[],n=50,type=None,unique_table_reset=True):
     global add_find_time,add_hit_time,cont_find_time,cont_hit_time
     global S_one,S_zero
     global tdd_type
-
+    global global_index_order, inverse_global_index_order
+    
     if type=='SymTDD' or type==None:
         from TDD.SymTDD.BDD import get_bdd,Ini_BDD
         tdd_type='SymTDD'
@@ -814,7 +815,7 @@ def cont(tdd1,tdd2):
     # create two lists of new keys for each TDD object by replacing the common variable keys with 'c'
     # create two lists of order values for each TDD object by using a global index order dictionary (not defined here)
     # append infinity to both order lists
-
+    # print("TDD 818", key_2_new_key)
     tdd=contract(tdd1,tdd2,key_2_new_key,cont_order,len(set(var_cont_idx)))
     
     tdd.index_set=var_out # set the index set of the output TDD object to be the list of unique variables
@@ -850,6 +851,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     w1=tdd1.weight
     w2=tdd2.weight
     
+    # print('TDD 854', k1, k2, key_2_new_key)
     if k1==-1 and k2==-1:
         if w1==S_zero:
             tdd=TDD(tdd1.node)

@@ -26,15 +26,17 @@ class Node:
     def __init__(self,key):
         self.idx = 0
         self.key = key
-        self.successor=[]#the element should be in this form [degree,weight,node]
-        self.index_degree=dict()
-        self.value=dict()
-        self.succ_num=2
+        self.successor = [] #the element should be in this form [degree, weight, node]
+        self.index_degree = dict()
+        self.value = dict()
+        self.succ_num = 2
         self._expr = None
+
     def __repr__(self) -> str:
         return str(self.expr)
     @property
     def expr(self):
+        global inverse_global_index_order
         if self.key==-1:
             return 1
         if self._expr:
@@ -45,7 +47,7 @@ class Node:
             # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
             numbers = re.findall("\d+", s)
             return int(numbers[0])
-        param_expr=self.key
+        param_expr=inverse_global_index_order[self.key]
         sym_str=param_expr.replace('sin(','').replace('cos(','').replace('[','').replace('])','').replace(str(get_numbers(param_expr)),'')
 
         sym_base = IndexedBase(sym_str)
@@ -124,8 +126,8 @@ class BDD:
         return add(self,g)
     
     def __mul__(self, g):
-        # return mul(self,g)
-        return cont(self, g)
+        return mul(self,g)
+        # return cont(self, g)
     
     def self_normalize(self, g):
         return normalize_2_fun(g,self)
@@ -462,8 +464,7 @@ def get_bdd(function):
 #不能使用str(function)
     if len(function.args)==1:
         '''目前假設只有一個變數，如果變多要改'''
-        
-        bdd=normalize(str(function),[[1,1,Find_Or_Add_Unique_table(-1)]])
+        # print('BDD 465',function)
         
         #在這把symbol次序放入
         for item in function.free_symbols:
@@ -472,29 +473,33 @@ def get_bdd(function):
                     symbol_name=item.name
             else:
                 symbol_name=item.name
-
+        str_func = str(function)
+        order = global_index_order[str_func]
+        bdd=normalize(order, [[1,1,Find_Or_Add_Unique_table(-1)]])
         bdd.key_2_index['sin(%s)'%symbol_name]=global_index_order['sin(%s)'%symbol_name]
         bdd.key_2_index['cos(%s)'%symbol_name]=global_index_order['cos(%s)'%symbol_name]
-        # print('BDD 463',bdd.key_2_index)
+        
+        print('BDD 481',bdd.key_2_index)
         return bdd
+    print('BDD 483', type(function))
     if isinstance(function,sp.core.add.Add):
         bdd=get_zero_state()
         for add_term in function.args:
-            temp_tdd=get_bdd(add_term)
-            bdd=add(bdd,temp_tdd)
+            temp_tdd = get_bdd(add_term)
+            bdd = bdd + temp_tdd
     elif isinstance(function,sp.core.mul.Mul):
     # elif isinstance(function,sp.mul.Mul):
         bdd=get_one_state()
         for mul_term in function.args:
-            temp_tdd=get_bdd(mul_term)
-            bdd=mul(bdd,temp_tdd)
+            temp_tdd = get_bdd(mul_term)
+            bdd = bdd * temp_tdd
     elif isinstance(function,sp.core.power.Pow):
     # elif isinstance(function,sp.power.Pow):
         bdd=get_one_state()
         pow= function.args[1]
         for mul_times in range(pow):
-            temp_tdd=get_bdd(function.args[0])
-            bdd=mul(bdd,temp_tdd)
+            temp_tdd = get_bdd(function.args[0])
+            bdd = bdd * temp_tdd
     return bdd
 
 
@@ -560,14 +565,16 @@ def mul(tdd1,tdd2):
                 temp_tdd2.weight=succ2[1]            
                 temp_res=mul(temp_tdd1,temp_tdd2)
                 if not succ1[0]+succ2[0]==0:
-                    if succ1[0]+succ2[0]==2 and k1[:3]=='sin':
-                        temp_res1=normalize('cos'+k1[3:],[[2,-1,Find_Or_Add_Unique_table(-1)]])
+                    # if succ1[0]+succ2[0]==2 and k1[:3]=='sin':
+                    if succ1[0]+succ2[0]==2 and k1 % 2 == 0 :
+                        temp_res1=normalize( k1 + 1,[[2,-1,Find_Or_Add_Unique_table(-1)]])
                         temp_res1=mul(temp_res1,temp_res)
                         temp_res=add(temp_res,temp_res1)
                     else:
                         temp_res=normalize(k1,[[succ1[0]+succ2[0],temp_res.weight,temp_res.node]])
                 tdd=add(tdd,temp_res)
-    elif global_index_order[k1]<=global_index_order[k2]:
+    elif k1 <= k2:
+    # elif global_index_order[k1]<=global_index_order[k2]:
         the_successor=[]
         for succ1 in tdd1.node.successor:
             temp_tdd1=BDD(succ1[2])
@@ -596,33 +603,33 @@ def add(tdd1,tdd2):
     """The apply function of two TDDs. Mostly, it is used to do addition here."""
     global global_index_order    
 
-    if tdd1.weight==0:
+    if tdd1.weight == 0:
         return tdd2.self_copy()
     
-    if tdd2.weight==0:
+    if tdd2.weight == 0:
         return tdd1.self_copy()
     
-    if tdd1.node==tdd2.node:
-        weig=tdd1.weight+tdd2.weight
-        if get_int_key(weig)==(0,0):
-            term=Find_Or_Add_Unique_table(-1)
-            res=BDD(term)
+    if tdd1.node == tdd2.node:
+        weig = tdd1.weight+tdd2.weight
+        if get_int_key(weig) == (0,0):
+            term = Find_Or_Add_Unique_table(-1)
+            res = BDD(term)
             res.weight=0
             return res
         else:
-            res=BDD(tdd1.node)
-            res.weight=weig
+            res = BDD(tdd1.node)
+            res.weight = weig
             return res
 
     if find_computed_table(['+',tdd1,tdd2]):
         return find_computed_table(['+',tdd1,tdd2])
     
-    k1=tdd1.node.key
-    k2=tdd2.node.key
-    
-    the_successor=[]
-    if k1==k2:
-        the_key=k1
+    k1 = tdd1.node.key
+    k2 = tdd2.node.key
+    print('BDD 627', k1, k2)
+    the_successor = []
+    if k1 == k2:
+        the_key = k1
         degree1=[succ[0] for succ in tdd1.node.successor]
         degree2=[succ[0] for succ in tdd2.node.successor]
         the_successor+=[[succ[0],succ[1]*tdd1.weight,succ[2]] for succ in tdd1.node.successor if not succ[0] in degree2]
@@ -638,19 +645,21 @@ def add(tdd1,tdd2):
             temp_res=add(temp_tdd1,temp_tdd2)
 #             print(temp_tdd1,temp_tdd2,temp_res)
             the_successor.append([d,temp_res.weight,temp_res.node])
-    elif global_index_order[k1]<=global_index_order[k2]:
-        the_key=k1
-        if tdd1.node.successor[0][0]==0:
+    elif k1 <= k2:
+    # elif global_index_order[k1]<=global_index_order[k2]:
+        the_key = k1
+        print('BDD 649',tdd1.node)
+        if tdd1.node.successor[0][0] == 0:
             temp_tdd1=BDD(tdd1.node.successor[0][2])
-            temp_tdd1.weight=tdd1.node.successor[0][1]*tdd1.weight
+            temp_tdd1.weight=tdd1.node.successor[0][1] * tdd1.weight
             temp_res=add(temp_tdd1,tdd2)
             the_successor.append([0,temp_res.weight,temp_res.node])
-            the_successor+=[[succ[0],succ[1]*tdd1.weight,succ[2]] for succ in tdd1.node.successor[1:]]
+            the_successor+=[[succ[0],succ[1] * tdd1.weight,succ[2]] for succ in tdd1.node.successor[1:]]
         else:
             the_successor.append([0,tdd2.weight,tdd2.node])
             the_successor+=[[succ[0],succ[1]*tdd1.weight,succ[2]] for succ in tdd1.node.successor]
     else:
-        the_key=k2
+        the_key = k2
         if tdd2.node.successor[0][0]==0:
             temp_tdd2=BDD(tdd2.node.successor[0][2])
             temp_tdd2.weight=tdd2.node.successor[0][1]*tdd2.weight
@@ -845,15 +854,11 @@ def var_sort (var):
 
 def cont(bdd1,bdd2):
     #找出哪些要輸出(cont)/保留(out)
-    var_out1=[var for var in bdd1.key_2_index.keys() ]
-    var_out2=[var for var in bdd2.key_2_index.keys() ]
-
+    var_out1=list(bdd1.key_2_index.keys())
+    var_out2=list(bdd2.key_2_index.keys())
+    print(var_out1, var_out2)
     var_out=var_out1+var_out2
     var_out=var_sort(var_out) #Index 已含有比較大小的函數
-
-    # var_out_idx=[var.key for var in var_out]
-    # var_cont_idx=[var.key for var in var_cont]
-    # var_cont_idx=[var for var in var_cont_idx if not var in var_out_idx]
     
     idx_2_key={-1:-1}
     key_2_idx={-1:-1}
@@ -886,7 +891,7 @@ def cont(bdd1,bdd2):
             key_2_new_key[1].append('c')
         cont_order[1].append(global_index_order[v])
     cont_order[1].append(float('inf'))
-
+    print('BDD 889',key_2_new_key)
     bdd=mul2(bdd1,bdd2,key_2_new_key,cont_order)
     bdd.index_set=var_out
     bdd.index_2_key=idx_2_key
@@ -903,7 +908,7 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
     k2=bdd2.node.key
     w1=bdd1.weight
     w2=bdd2.weight
-    
+    print('BDD 906', k1, k2, key_2_new_key, cont_order)
     if k1==k2==-1:
         weig=bdd1.weight*bdd2.weight
         term=Find_Or_Add_Unique_table(-1)
@@ -938,10 +943,10 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
     bdd1.weight=1
     bdd2.weight=1
     
-    print('BDD 942', k1)
     temp_key_2_new_key=[]
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0][:(k1+1)]]))
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1][:(k2+1)]]))
+
 
     tdd=find_computed_table(['*',bdd1,bdd2,temp_key_2_new_key])
     if tdd:
@@ -1039,7 +1044,8 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
             temp_res=add2(temp_tdd1,temp_tdd2,key_2_new_key,cont_order)
 #             print(temp_tdd1,temp_tdd2,temp_res)
             the_successor.append([d,temp_res.weight,temp_res.node])
-    elif global_index_order[k1]<=global_index_order[k2]:
+    elif k1 <= k2:
+    # elif global_index_order[k1]<=global_index_order[k2]:
         the_key=k1
         if bdd1.node.successor[0][0]==0:
             temp_tdd1=BDD(bdd1.node.successor[0][2])
