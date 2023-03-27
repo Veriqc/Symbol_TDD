@@ -759,13 +759,14 @@ def np_2_tdd(U,order=[],key_width=True):
 
     
 def cont(tdd1,tdd2):
+    #找出哪些要輸出(cont)/保留(out)
 
     var_cont=[var for var in tdd1.index_set if var in tdd2.index_set]
     var_out1=[var for var in tdd1.index_set if not var in var_cont]
     var_out2=[var for var in tdd2.index_set if not var in var_cont]
 
     var_out=var_out1+var_out2
-    var_out.sort()
+    var_out.sort() #Index 已含有比較大小的函數
     var_out_idx=[var.key for var in var_out]
     var_cont_idx=[var.key for var in var_cont]
     var_cont_idx=[var for var in var_cont_idx if not var in var_out_idx]
@@ -779,9 +780,10 @@ def cont(tdd1,tdd2):
             idx_2_key[var_out_idx[k]]=n
             key_2_idx[n]=var_out_idx[k]
             n+=1
-        
-    key_2_new_key=[[],[]]
-    cont_order=[[],[]]
+    
+    key_2_new_key=[[],[]] #找key的對應
+    cont_order=[[],[]]    #找cont的順序
+
     for k in range(len(tdd1.key_2_index)-1):
         v=tdd1.key_2_index[k]
         if v in idx_2_key:
