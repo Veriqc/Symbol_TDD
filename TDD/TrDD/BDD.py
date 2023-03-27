@@ -480,9 +480,9 @@ def get_bdd(function):
         bdd.key_2_index[1]='sin(%s)'%symbol_name
         bdd.key_2_index[0]='cos(%s)'%symbol_name
         bdd.key_2_index[-1]=-1
-        print('BDD 481',bdd.key_2_index)
+        # print('BDD 481',bdd.key_2_index)
         return bdd
-    print('BDD 483', type(function))
+    # print('BDD 483', type(function))
     if isinstance(function,sp.core.add.Add):
         bdd=get_zero_state()
         for add_term in function.args:
@@ -846,19 +846,20 @@ def conjugate(tdd):
 
 def var_sort (var):
     global global_index_order, inverse_global_index_order
-    
+    print('BDD 849', var, inverse_global_index_order, global_index_order)
     idx=[global_index_order[k] for k in var]
     idx.sort( )
+    print('BDD 853', idx.sort( ))
     var_sort= [inverse_global_index_order[k] for k in idx]
 
     return var_sort
 
 def cont(bdd1,bdd2):
     #找出哪些要輸出(cont)/保留(out)
-    var_out1=list(bdd1.key_2_index.keys())
-    var_out2=list(bdd2.key_2_index.keys())
-    print(var_out1, var_out2)
-    var_out=var_out1+var_out2
+    var_out1=set(bdd1.key_2_index.values())
+    var_out2=set(bdd2.key_2_index.values())
+    print('BDD 861',var_out1, var_out2)
+    var_out=list(var_out1.union(var_out2))
     var_out=var_sort(var_out) #Index 已含有比較大小的函數
     
     idx_2_key={-1:-1}
@@ -958,6 +959,7 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
               
     tdd=BDD(bdd2.node)
     tdd.weight=0
+    print('BDD 962',cont_order,k1,k2)
     if cont_order[0][k1] == cont_order[1][k2]:
         for succ1 in bdd1.node.successor:
             for succ2 in bdd2.node.successor:
