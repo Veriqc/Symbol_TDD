@@ -126,8 +126,8 @@ class BDD:
         return add(self,g)
     
     def __mul__(self, g):
-        return mul(self,g)
-        # return cont(self, g)
+        # return mul(self,g)
+        return cont(self, g)
     
     def self_normalize(self, g):
         return normalize_2_fun(g,self)
@@ -476,9 +476,10 @@ def get_bdd(function):
         str_func = str(function)
         order = global_index_order[str_func]
         bdd=normalize(order, [[1,1,Find_Or_Add_Unique_table(-1)]])
-        bdd.key_2_index['sin(%s)'%symbol_name]=global_index_order['sin(%s)'%symbol_name]
-        bdd.key_2_index['cos(%s)'%symbol_name]=global_index_order['cos(%s)'%symbol_name]
-        
+        bdd.index_set=[global_index_order['sin(%s)'%symbol_name],global_index_order['cos(%s)'%symbol_name]]
+        bdd.key_2_index[1]='sin(%s)'%symbol_name
+        bdd.key_2_index[0]='cos(%s)'%symbol_name
+        bdd.key_2_index[-1]=-1
         print('BDD 481',bdd.key_2_index)
         return bdd
     print('BDD 483', type(function))
