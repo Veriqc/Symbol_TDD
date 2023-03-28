@@ -72,9 +72,8 @@ class BDD:
             return self, g, get_one_state()
 
         key1=min(g.data.keys())
-
         item={key1:g.data[key1]}
-
+        print('EXP 75', item)
         def div_item (data,item ):
             dict1={}
             key=list(item.keys())[0]
