@@ -1,3 +1,4 @@
+"""Dummy module docstring"""
 import copy
 import math
 from functools import lru_cache, update_wrapper, wraps
@@ -7,7 +8,7 @@ import sympy as sp
 from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
 
-"""Define global variables"""
+# Define global variables
 
 unique_table = dict()
 

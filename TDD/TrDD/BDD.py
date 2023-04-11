@@ -1,3 +1,4 @@
+"""Dummy module docstring"""
 import copy
 import math
 
@@ -7,7 +8,7 @@ from IPython.display import Image
 from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
 
-"""Define global variables"""
+# Define global variables
 computed_table = dict()
 unique_table = dict()
 global_index_order = dict()

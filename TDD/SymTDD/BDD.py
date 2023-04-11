@@ -1,3 +1,4 @@
+"""Dummy module docstring"""
 import copy
 import math
 
@@ -6,7 +7,7 @@ from graphviz import Digraph
 from IPython.display import Image
 from sympy import *
 
-"""Define global variables"""
+# Define global variables
 computed_table = dict()
 unique_table = dict()
 global_index_order = dict()
