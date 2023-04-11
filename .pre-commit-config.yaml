@@ -22,9 +22,10 @@ repos:
         types: [ python ]
       - id: isort
         name: isort
-        entry: isort
+        entry: isort .
         language: system
         types: [python]
+        pass_filenames: false
       - id: black
         name: black
         entry: black
@@ -37,7 +38,7 @@ repos:
         types: [python]
       - id: mypy
         name: mypy
-        entry: mypy
+        entry: mypy .
         require_serial: true
         language: system
         types: [python]
@@ -47,6 +48,7 @@ repos:
         entry: flake8
         language: system
         types: [python]
+        pass_filenames: false
       - id: kacl-verify
         name: kacl-verify
         entry: kacl-cli verify
