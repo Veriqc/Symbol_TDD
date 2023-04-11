@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: ./.github/actions/python-poetry-env
+      - uses: ./.github/actions/python-check-env
       - run: pre-commit run --all-files
 
   test:
@@ -41,7 +41,7 @@ jobs:
         python-version: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
-      - uses: ./.github/actions/python-poetry-env
+      - uses: ./.github/actions/python-test-env
         with:
           python-version: ${{ matrix.python-version }}
       - run: pytest

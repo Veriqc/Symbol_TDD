@@ -1,5 +1,5 @@
-name: 'Setup Python + Poetry environment'
-description: 'Setup Python + Poetry environment'
+name: 'Setup Python + check environment'
+description: 'Setup Python + check environment'
 
 inputs:
   python-version:
@@ -14,5 +14,8 @@ runs:
       with:
         python-version: ${{inputs.python-version}}
     - name: Install dependencies
-      run: pip install ".[dev]"
+      run: cat ./requirements-dev.txt | grep "pytest" | grep -v "#" | xargs pip install
+      shell: bash
+    - name: Install the package
+      run: pip install .
       shell: bash

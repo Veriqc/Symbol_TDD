@@ -95,4 +95,3 @@ To check the equivalence of two quantum circuits or two tensors, you just need t
     set_index_order(all_indexs2)
     tdd2=tn2.cont() # Notice that the final indices of tdd2 must match that of tdd
     print(tdd==tdd2)
-
