@@ -3,7 +3,8 @@ import math
 import numpy as np
 from qiskit.circuit.parameterexpression import ParameterExpression
 from sympy import *
-from TDD.TN import Index, Tensor, TensorNetwork
+from TDD.TDD import Index
+from TDD.TN import Tensor, TensorNetwork
 
 
 def is_diagonal(U):

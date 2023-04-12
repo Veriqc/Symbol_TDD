@@ -1,3 +1,4 @@
 qiskit[visualization] ~= 0.42
 quimb ~= 1.4
 cotengra @ git+https://github.com/jcmgray/cotengra.git
+graphviz ~= 0.20.1
