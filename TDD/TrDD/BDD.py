@@ -492,9 +492,10 @@ def get_bdd(function):
         
         bdd=normalize( order % 2, [[1,1,Find_Or_Add_Unique_table(-1)]])
         bdd.index_set=[global_index_order['sin(%s)'%symbol_name],global_index_order['cos(%s)'%symbol_name]]
-        bdd.key_2_index[0]='sin(%s)'%symbol_name
-        bdd.key_2_index[1]='cos(%s)'%symbol_name
+        bdd.key_2_index[1]='sin(%s)'%symbol_name
+        bdd.key_2_index[0]='cos(%s)'%symbol_name
         bdd.key_2_index[-1]=-1
+
         # print('BDD 481',bdd.key_2_index)
         return bdd
     # print('BDD 483', type(function))
@@ -864,7 +865,7 @@ def var_sort (var):
     print('BDD 849', var, inverse_global_index_order, global_index_order)
     idx=[global_index_order[k] for k in var]
     idx.sort( )
-    print('BDD 853', idx.sort( ))
+    print('BDD 853', idx)
     var_sort= [inverse_global_index_order[k] for k in idx]
 
     return var_sort
@@ -873,19 +874,20 @@ def cont(mode,bdd1,bdd2):
     #找出哪些要輸出(cont)/保留(out)
     var_out1=set(bdd1.key_2_index.values())
     var_out2=set(bdd2.key_2_index.values())
-    print('BDD 861',var_out1, var_out2)
+    print('BDD 877',bdd1.node.key,bdd2.node.key,bdd1.key_2_index.values(), bdd2.key_2_index.values() ,var_out1, var_out2 ,bdd1.key_2_index , bdd2.key_2_index)
     var_out=list(var_out1.union(var_out2))
     var_out=var_sort(var_out) #Index 已含有比較大小的函數
-    
+    print('BDD 880', var_out)
     idx_2_key={-1:-1}
     key_2_idx={-1:-1}
     
     n=0
-    for k in range(len(var_out)-1,-1,-1):
+    for k in range(len(var_out)-1):
         if not var_out[k] in idx_2_key:
             idx_2_key[var_out[k]]=n
             key_2_idx[n]=var_out[k]
             n+=1
+    print('BDD 890', idx_2_key, key_2_idx)
     #找key的對應
     key_2_new_key=[[],[]]
     #找cont的順序
@@ -905,13 +907,12 @@ def cont(mode,bdd1,bdd2):
             key_2_new_key[1].append(idx_2_key[v])
         cont_order[1].append(global_index_order[v])
     cont_order[1].append(float('inf'))
-    print('BDD 889',key_2_new_key)
+    print('BDD 889',bdd1.node.key, bdd2.node.key, key_2_new_key, cont_order)
     if mode =='mul':
         bdd=mul2(bdd1,bdd2,key_2_new_key,cont_order)
     if mode =='add':
         bdd=add2(bdd1,bdd2,key_2_new_key,cont_order)
     bdd.index_set=var_out
-    bdd.index_2_key=idx_2_key
     bdd.key_2_index=key_2_idx
 
     return bdd
@@ -964,8 +965,12 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0][:(k1+1)]]))
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1][:(k2+1)]]))
 
+    temp_key_2_new_key=[]
+    temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0]]))
+    temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1]]))
 
     tdd=find_computed_table(['*',bdd1,bdd2,temp_key_2_new_key])
+    # tdd=find_computed_table(['*',bdd1,bdd2,key_2_new_key])
     if tdd:
 
         tdd.weight=tdd.weight*w1*w2
@@ -989,7 +994,7 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
                 temp_res=mul2(temp_bdd1,temp_tdd2,key_2_new_key,cont_order)
                 print('BDD 978', key_2_new_key, k1)
                 if not succ1[0]+succ2[0]==0:
-                    if succ1[0]+succ2[0]==2 and k1 % 2== 0: 
+                    if succ1[0]+succ2[0]==2 and k1 % 2 == 1: 
                         temp_res1=normalize(k1 + 1,[[2,-1,Find_Or_Add_Unique_table(-1)]])
                         temp_res1=mul2(temp_res1,temp_res,key_2_new_key,cont_order)
                         # temp_res=add(temp_res,temp_res1)
@@ -1037,8 +1042,8 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
     k2=bdd2.node.key
     
     temp_key_2_new_key=[]
-    temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0][:(k1+1)]]))
-    temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1][:(k2+1)]]))
+    temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0]]))
+    temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1]]))
 
     if find_computed_table(['+',bdd1,bdd2,temp_key_2_new_key]):
         return find_computed_table(['+',bdd1,bdd2,temp_key_2_new_key])
