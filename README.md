@@ -20,7 +20,22 @@ Decision Diagram
 
 ## Installation
 
+### Through Conda
 ```sh
+conda env create -f environment.yml
+pip install -e .
+```
+
+### Through pip
+*You need to install graphviz from your system package.*
+```sh
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+pip install -e .
+```
+or
+```sh
+pip install -r requirements.txt
 pip install -e ".[dev]"
 ```
 
