@@ -141,9 +141,9 @@ class TensorNetwork:
                 return _tdds[0], max_node_num
 
             indices = {
-                    index_2_str(index)
-                    for tensor in self.tensors
-                    for index in tensor.index_set
+                index_2_str(index)
+                for tensor in self.tensors
+                for index in tensor.index_set
             }
 
             index_id_dict = dict(zip(indices, range(len(indices))))
