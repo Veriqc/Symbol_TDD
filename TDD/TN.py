@@ -105,51 +105,74 @@ class TensorNetwork:
             if not self.tn_type == "cir":
                 print("This optimizer is only used for quantum circuits!")
                 return tdd
-            
+
             import opt_einsum as oe
 
             def index_2_str(index):
-                return index.key # + '_' + str(index.idx) if index.key[0] == 'x' else index.key
+                return (
+                    index.key
+                )  # + '_' + str(index.idx) if index.key[0] == 'x' else index.key
 
             def tdds_contract_by_path(tdds, path, max_node, max_node_num):
-                _tdds = tdds # inplace modify tdds by now
+                _tdds = tdds  # inplace modify tdds by now
                 for ts1, ts2 in path:
+                    # print('contract:', ts1, ts2)
                     tmp_tdd = cont(_tdds[ts1], _tdds[ts2])
-                    
+
                     if max_node:
                         max_node_num = max(max_node_num, tmp_tdd.node_number())
 
-                    # TODO: use heapq to do in O(logn)
-                    del_vals = [_tdds[ts1], _tdds[ts2]]
-                    [_tdds.remove(element) for element in del_vals]
+                    # TODO: use heapq to do in O(logn)?
+                    # https://stackoverflow.com/a/10163422
+                    _tdds = [
+                        _tdd for i, _tdd in enumerate(_tdds) if i not in [ts1, ts2]
+                    ]
+
+                    # simple remove?
+                    # bug: __eq__ of tdd does not unique?
+                    # del_vals = [_tdds[ts1], _tdds[ts2]]
+                    # [_tdds.remove(element) for element in del_vals]
                     _tdds.append(tmp_tdd)
 
-                    print("# of remain ts:", len(_tdds))
+                    # print("# of remain ts:", len(_tdds))
+                    # print("remain indices:", [[index_2_str(index) for index in _tdd.index_set] for _tdd in _tdds ])
 
-                return tmp_tdd, max_node_num
-            
-            indices = set([index_2_str(index) for tensor in self.tensors for index in tensor.index_set])
+                assert len(_tdds) == 1
+                return _tdds[0], max_node_num
+
+            indices = {
+                    index_2_str(index)
+                    for tensor in self.tensors
+                    for index in tensor.index_set
+            }
 
             index_id_dict = dict(zip(indices, range(len(indices))))
 
-            print("index_id_dict:", index_id_dict)
+            # print("index_id_dict:", index_id_dict)
 
-            ts_index_seq = [(tensor.data, [index_id_dict[index_2_str(index)] for index in tensor.index_set]) for tensor in self.tensors]
+            ts_index_seq = [
+                (
+                    tensor.data,
+                    [index_id_dict[index_2_str(index)] for index in tensor.index_set],
+                )
+                for tensor in self.tensors
+            ]
             ts_index_flat_seq = sum(ts_index_seq, ())
 
-            output_index_ids = [index_id_dict[index] for index in indices if index[0] == 'y']
+            output_index_ids = [
+                index_id_dict[index] for index in indices if index[0] == "y"
+            ]
 
-            print("ts index:", dict(enumerate(ts_index_flat_seq[1::2])))
-            print("output:", output_index_ids)
+            # print("ts index:", dict(enumerate(ts_index_flat_seq[1::2])))
+            # print("output:", output_index_ids)
 
             path, path_info = oe.contract_path(*ts_index_flat_seq, output_index_ids)
 
-            print(path, path_info)
+            # print(path, path_info)
 
             tdds = [tensor.tdd() for tensor in self.tensors]
 
             return tdds_contract_by_path(tdds, path, max_node, max_node_num)
-
 
         for ts in self.tensors:
             temp_tdd = ts.tdd()
