@@ -22,7 +22,7 @@ epi=1e-10
 
     
 class Node:
-    """To define the node of TDD"""
+    """To define the node of bdd"""
     def __init__(self,key):
         self.idx = 0
         self._key = key
@@ -266,7 +266,7 @@ def get_int_key(weight):
     return (int(round(weight.real/epi)) ,int(round(weight.imag/epi)))
 
 def get_node_set(node,node_set=set()):
-    """Only been used when counting the node number of a TDD"""
+    """Only been used when counting the node number of a bdd"""
     if not node.idx in node_set:
         node_set.add(node.idx)
         for k in node.successor:
@@ -383,42 +383,42 @@ def find_computed_table(item):
         the_key=('s',get_int_key(item[1].weight),item[1].node,temp_key,item[3])
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
-            tdd = BDD(res[1])
-            tdd.weight = res[0]
-            return tdd
+            bdd = BDD(res[1])
+            bdd.weight = res[0]
+            return bdd
     elif item[0] == '+':
         the_key=('+',get_int_key(item[1].weight),item[1].node,get_int_key(item[2].weight),item[2].node,item[3][0],item[3][1])
         add_find_time+=1
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
-            tdd = BDD(res[1])
-            tdd.weight = res[0]
+            bdd = BDD(res[1])
+            bdd.weight = res[0]
             add_hit_time+=1
-            return tdd
+            return bdd
         the_key=('+',get_int_key(item[2].weight),item[2].node,get_int_key(item[1].weight),item[1].node,item[3][0],item[3][1])
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
-            tdd = BDD(res[1])
-            tdd.weight = res[0]
+            bdd = BDD(res[1])
+            bdd.weight = res[0]
             add_hit_time+=1
-            return tdd
+            return bdd
     elif item[0] == '*':
         the_key=('*',get_int_key(item[1].weight),item[1].node,get_int_key(item[2].weight),item[2].node,item[3][0],item[3][1])
         # ,*item[3]
         cont_find_time+=1
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
-            tdd = BDD(res[1])
-            tdd.weight = res[0]
+            bdd = BDD(res[1])
+            bdd.weight = res[0]
             cont_hit_time+=1            
-            return tdd
+            return bdd
         the_key=('*',get_int_key(item[2].weight),item[2].node,get_int_key(item[1].weight),item[1].node,item[3][0],item[3][1])
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
-            tdd = BDD(res[1])
-            tdd.weight = res[0]
+            bdd = BDD(res[1])
+            bdd.weight = res[0]
             cont_hit_time+=1            
-            return tdd
+            return bdd
     elif item[0] == '/':
         the_key = ('/',get_int_key(item[1].weight),item[1].node,get_int_key(item[2].weight),item[2].node)
         if computed_table.__contains__(the_key):
@@ -434,9 +434,9 @@ def find_computed_table(item):
         the_key = ('r',get_int_key(item[1].weight),item[1].node,(tuple(item[2].keys()),tuple(item[2].values())))
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
-            tdd = BDD(res[1])
-            tdd.weight = res[0]          
-            return tdd            
+            bdd = BDD(res[1])
+            bdd.weight = res[0]          
+            return bdd            
     return None
 
 def insert_2_computed_table(item,res):
@@ -492,8 +492,8 @@ def get_bdd(function):
         
         bdd=normalize( order % 2, [[1,1,Find_Or_Add_Unique_table(-1)]])
         bdd.index_set=[global_index_order['sin(%s)'%symbol_name],global_index_order['cos(%s)'%symbol_name]]
-        bdd.key_2_index[1]='sin(%s)'%symbol_name
         bdd.key_2_index[0]='cos(%s)'%symbol_name
+        bdd.key_2_index[1]='sin(%s)'%symbol_name
         bdd.key_2_index[-1]=-1
 
         # print('BDD 481',bdd.key_2_index)
@@ -502,36 +502,36 @@ def get_bdd(function):
     if isinstance(function,sp.core.add.Add):
         bdd=get_zero_state()
         for add_term in function.args:
-            temp_tdd = get_bdd(add_term)
-            bdd = bdd + temp_tdd
+            temp_bdd = get_bdd(add_term)
+            bdd = bdd + temp_bdd
     elif isinstance(function,sp.core.mul.Mul):
     # elif isinstance(function,sp.mul.Mul):
         bdd=get_one_state()
         for mul_term in function.args:
-            temp_tdd = get_bdd(mul_term)
-            bdd = bdd * temp_tdd
+            temp_bdd = get_bdd(mul_term)
+            bdd = bdd * temp_bdd
     elif isinstance(function,sp.core.power.Pow):
     # elif isinstance(function,sp.power.Pow):
         bdd=get_one_state()
         pow= function.args[1]
         for mul_times in range(pow):
-            temp_tdd = get_bdd(function.args[0])
-            bdd = bdd * temp_tdd
+            temp_bdd = get_bdd(function.args[0])
+            bdd = bdd * temp_bdd
     return bdd
 
 
 
-def mul(tdd1,tdd2):
-    """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
+def mul(bdd1,bdd2):
+    """The contraction of two bdds, var_cont is in the form [[4,1],[3,2]]"""
     global global_index_order 
 
-    k1=tdd1.node.key
-    k2=tdd2.node.key
-    w1=tdd1.weight
-    w2=tdd2.weight
+    k1=bdd1.node.key
+    k2=bdd2.node.key
+    w1=bdd1.weight
+    w2=bdd2.weight
     
     if k1==k2==-1:
-        weig=tdd1.weight*tdd2.weight
+        weig=bdd1.weight*bdd2.weight
         term=Find_Or_Add_Unique_table(-1)
         res=BDD(term)        
         if get_int_key(weig)==(0,0):
@@ -543,44 +543,44 @@ def mul(tdd1,tdd2):
 
     if k1==-1:
         if w1==0:
-            tdd=BDD(tdd1.node)
-            tdd.weight=0
-            return tdd
+            bdd=BDD(bdd1.node)
+            bdd.weight=0
+            return bdd
 
-        tdd=BDD(tdd2.node)
-        tdd.weight=w1*w2
-        return tdd
+        bdd=BDD(bdd2.node)
+        bdd.weight=w1*w2
+        return bdd
             
     if k2==-1:
         if w2==0:
-            tdd=BDD(tdd2.node)
-            tdd.weight=0
-            return tdd        
+            bdd=BDD(bdd2.node)
+            bdd.weight=0
+            return bdd        
 
-        tdd=BDD(tdd1.node)
-        tdd.weight=w1*w2
-        return tdd
+        bdd=BDD(bdd1.node)
+        bdd.weight=w1*w2
+        return bdd
     
-    tdd1.weight=1
-    tdd2.weight=1
+    bdd1.weight=1
+    bdd2.weight=1
     
-    tdd=find_computed_table(['*',tdd1,tdd2])
-    if tdd:
-        tdd.weight=tdd.weight*w1*w2
-        tdd1.weight=w1
-        tdd2.weight=w2        
-        return tdd
+    bdd=find_computed_table(['*',bdd1,bdd2])
+    if bdd:
+        bdd.weight=bdd.weight*w1*w2
+        bdd1.weight=w1
+        bdd2.weight=w2        
+        return bdd
               
-    tdd=BDD(tdd2.node)
-    tdd.weight=0
+    bdd=BDD(bdd2.node)
+    bdd.weight=0
     if k1==k2:
-        for succ1 in tdd1.node.successor:
-            for succ2 in tdd2.node.successor:
-                temp_tdd1=BDD(succ1[2])
-                temp_tdd1.weight=succ1[1]
-                temp_tdd2=BDD(succ2[2])
-                temp_tdd2.weight=succ2[1]            
-                temp_res=mul(temp_tdd1,temp_tdd2)
+        for succ1 in bdd1.node.successor:
+            for succ2 in bdd2.node.successor:
+                temp_bdd1=BDD(succ1[2])
+                temp_bdd1.weight=succ1[1]
+                temp_bdd2=BDD(succ2[2])
+                temp_bdd2.weight=succ2[1]            
+                temp_res=mul(temp_bdd1,temp_bdd2)
                 if not succ1[0]+succ2[0]==0:
                     # if succ1[0]+succ2[0]==2 and k1[:3]=='sin':
                     if succ1[0]+succ2[0]==2 and k1 % 2 == 0 :
@@ -589,220 +589,220 @@ def mul(tdd1,tdd2):
                         temp_res=add(temp_res,temp_res1)
                     else:
                         temp_res=normalize(k1,[[succ1[0]+succ2[0],temp_res.weight,temp_res.node]])
-                tdd=add(tdd,temp_res)
+                bdd=add(bdd,temp_res)
     elif k1 <= k2:
     # elif global_index_order[k1]<=global_index_order[k2]:
         the_successor=[]
-        for succ1 in tdd1.node.successor:
-            temp_tdd1=BDD(succ1[2])
-            temp_tdd1.weight=succ1[1]
-            temp_res=mul(temp_tdd1,tdd2)
+        for succ1 in bdd1.node.successor:
+            temp_bdd1=BDD(succ1[2])
+            temp_bdd1.weight=succ1[1]
+            temp_res=mul(temp_bdd1,bdd2)
             the_successor.append([succ1[0],temp_res.weight,temp_res.node])
-            tdd=normalize(k1,the_successor)
+            bdd=normalize(k1,the_successor)
     else:
         the_successor=[]
-        for succ2 in tdd2.node.successor:
-            temp_tdd2=BDD(succ2[2])
-            temp_tdd2.weight=succ2[1]
-            temp_res=mul(tdd1,temp_tdd2)
+        for succ2 in bdd2.node.successor:
+            temp_bdd2=BDD(succ2[2])
+            temp_bdd2.weight=succ2[1]
+            temp_res=mul(bdd1,temp_bdd2)
             the_successor.append([succ2[0],temp_res.weight,temp_res.node])
-            tdd=normalize(k2,the_successor)        
+            bdd=normalize(k2,the_successor)        
             
-    insert_2_computed_table(['*',tdd1,tdd2],tdd)
-    tdd.weight=tdd.weight*w1*w2
-    tdd1.weight=w1
-    tdd2.weight=w2
+    insert_2_computed_table(['*',bdd1,bdd2],bdd)
+    bdd.weight=bdd.weight*w1*w2
+    bdd1.weight=w1
+    bdd2.weight=w2
     
-    return tdd      
+    return bdd      
         
 
-def add(tdd1,tdd2):
-    """The apply function of two TDDs. Mostly, it is used to do addition here."""
+def add(bdd1,bdd2):
+    """The apply function of two bdds. Mostly, it is used to do addition here."""
     global global_index_order    
 
-    if tdd1.weight == 0:
-        return tdd2.self_copy()
+    if bdd1.weight == 0:
+        return bdd2.self_copy()
     
-    if tdd2.weight == 0:
-        return tdd1.self_copy()
+    if bdd2.weight == 0:
+        return bdd1.self_copy()
     
-    if tdd1.node == tdd2.node:
-        weig = tdd1.weight+tdd2.weight
+    if bdd1.node == bdd2.node:
+        weig = bdd1.weight+bdd2.weight
         if get_int_key(weig) == (0,0):
             term = Find_Or_Add_Unique_table(-1)
             res = BDD(term)
             res.weight=0
             return res
         else:
-            res = BDD(tdd1.node)
+            res = BDD(bdd1.node)
             res.weight = weig
             return res
 
-    if find_computed_table(['+',tdd1,tdd2]):
-        return find_computed_table(['+',tdd1,tdd2])
+    if find_computed_table(['+',bdd1,bdd2]):
+        return find_computed_table(['+',bdd1,bdd2])
     
-    k1 = tdd1.node.key
-    k2 = tdd2.node.key
+    k1 = bdd1.node.key
+    k2 = bdd2.node.key
     print('BDD 627', k1, k2)
     the_successor = []
     if k1 == k2:
         the_key = k1
-        degree1=[succ[0] for succ in tdd1.node.successor]
-        degree2=[succ[0] for succ in tdd2.node.successor]
-        the_successor+=[[succ[0],succ[1]*tdd1.weight,succ[2]] for succ in tdd1.node.successor if not succ[0] in degree2]
-        the_successor+=[[succ[0],succ[1]*tdd2.weight,succ[2]] for succ in tdd2.node.successor if not succ[0] in degree1]
+        degree1=[succ[0] for succ in bdd1.node.successor]
+        degree2=[succ[0] for succ in bdd2.node.successor]
+        the_successor+=[[succ[0],succ[1]*bdd1.weight,succ[2]] for succ in bdd1.node.successor if not succ[0] in degree2]
+        the_successor+=[[succ[0],succ[1]*bdd2.weight,succ[2]] for succ in bdd2.node.successor if not succ[0] in degree1]
         com_degree=[d for d in degree1 if d in degree2]
         for d in com_degree:
             pos1=degree1.index(d)
-            temp_tdd1=BDD(tdd1.node.successor[pos1][2])
-            temp_tdd1.weight=tdd1.node.successor[pos1][1]*tdd1.weight
+            temp_bdd1=BDD(bdd1.node.successor[pos1][2])
+            temp_bdd1.weight=bdd1.node.successor[pos1][1]*bdd1.weight
             pos2=degree2.index(d)
-            temp_tdd2=BDD(tdd2.node.successor[pos2][2])
-            temp_tdd2.weight=tdd2.node.successor[pos2][1]*tdd2.weight          
-            temp_res=add(temp_tdd1,temp_tdd2)
-#             print(temp_tdd1,temp_tdd2,temp_res)
+            temp_bdd2=BDD(bdd2.node.successor[pos2][2])
+            temp_bdd2.weight=bdd2.node.successor[pos2][1]*bdd2.weight          
+            temp_res=add(temp_bdd1,temp_bdd2)
+#             print(temp_bdd1,temp_bdd2,temp_res)
             the_successor.append([d,temp_res.weight,temp_res.node])
     elif k1 <= k2:
     # elif global_index_order[k1]<=global_index_order[k2]:
         the_key = k1
-        print('BDD 649',tdd1.node)
-        if tdd1.node.successor[0][0] == 0:
-            temp_tdd1=BDD(tdd1.node.successor[0][2])
-            temp_tdd1.weight=tdd1.node.successor[0][1] * tdd1.weight
-            temp_res=add(temp_tdd1,tdd2)
+        print('BDD 649',bdd1.node)
+        if bdd1.node.successor[0][0] == 0:
+            temp_bdd1=BDD(bdd1.node.successor[0][2])
+            temp_bdd1.weight=bdd1.node.successor[0][1] * bdd1.weight
+            temp_res=add(temp_bdd1,bdd2)
             the_successor.append([0,temp_res.weight,temp_res.node])
-            the_successor+=[[succ[0],succ[1] * tdd1.weight,succ[2]] for succ in tdd1.node.successor[1:]]
+            the_successor+=[[succ[0],succ[1] * bdd1.weight,succ[2]] for succ in bdd1.node.successor[1:]]
         else:
-            the_successor.append([0,tdd2.weight,tdd2.node])
-            the_successor+=[[succ[0],succ[1]*tdd1.weight,succ[2]] for succ in tdd1.node.successor]
+            the_successor.append([0,bdd2.weight,bdd2.node])
+            the_successor+=[[succ[0],succ[1]*bdd1.weight,succ[2]] for succ in bdd1.node.successor]
     else:
         the_key = k2
-        if tdd2.node.successor[0][0]==0:
-            temp_tdd2=BDD(tdd2.node.successor[0][2])
-            temp_tdd2.weight=tdd2.node.successor[0][1]*tdd2.weight
-            temp_res=add(tdd1,temp_tdd2)
+        if bdd2.node.successor[0][0]==0:
+            temp_bdd2=BDD(bdd2.node.successor[0][2])
+            temp_bdd2.weight=bdd2.node.successor[0][1]*bdd2.weight
+            temp_res=add(bdd1,temp_bdd2)
             the_successor.append([0,temp_res.weight,temp_res.node])
-            the_successor+=[[succ[0],succ[1]*tdd2.weight,succ[2]] for succ in tdd2.node.successor[1:]]
+            the_successor+=[[succ[0],succ[1]*bdd2.weight,succ[2]] for succ in bdd2.node.successor[1:]]
         else:
-            the_successor.append([0,tdd1.weight,tdd1.node])
-            the_successor+=[[succ[0],succ[1]*tdd2.weight,succ[2]] for succ in tdd2.node.successor]          
+            the_successor.append([0,bdd1.weight,bdd1.node])
+            the_successor+=[[succ[0],succ[1]*bdd2.weight,succ[2]] for succ in bdd2.node.successor]          
             
     res = normalize(the_key,the_successor)
-    insert_2_computed_table(['+',tdd1,tdd2],res)
+    insert_2_computed_table(['+',bdd1,bdd2],res)
 #     print(res)
 #     print('-----------')
     return res
 
-def reduce_degree(tdd,min_degree):
+def reduce_degree(bdd,min_degree):
     if len(min_degree)==0:
-        return tdd.self_copy()
+        return bdd.self_copy()
     
     max_index=max([global_index_order[k] for k in min_degree])
     
-    k1=tdd.node.key
+    k1=bdd.node.key
     
     if global_index_order[k1]>max_index:
-        return tdd.self_copy()
+        return bdd.self_copy()
     
-    w=tdd.weight
-    tdd.weight=1
+    w=bdd.weight
+    bdd.weight=1
     
-    if find_computed_table(['r',tdd,min_degree]):
-        res=find_computed_table(['r',tdd,min_degree])
+    if find_computed_table(['r',bdd,min_degree]):
+        res=find_computed_table(['r',bdd,min_degree])
         res.weight*=w
-        tdd.weight=w
+        bdd.weight=w
         return res
     
     the_successor=[]
     
     if k1 in min_degree:
-        for succ in tdd.node.successor:
+        for succ in bdd.node.successor:
             temp_res=reduce_degree(BDD(succ[2]),min_degree)
             the_successor.append([succ[0]-min_degree[k1],succ[1]*temp_res.weight,temp_res.node])
         res=normalize(k1,the_successor)
     else:
-        for succ in tdd.node.successor:
+        for succ in bdd.node.successor:
             temp_res=reduce_degree(BDD(succ[2]),min_degree)
             the_successor.append([succ[0],succ[1]*temp_res.weight,temp_res.node])
         res=normalize(k1,the_successor)
-    insert_2_computed_table(['r',tdd,min_degree],res)
+    insert_2_computed_table(['r',bdd,min_degree],res)
     res.weight*=w
-    tdd.weight=w    
+    bdd.weight=w    
     return res
 
 
-def normalize_2_fun(tdd1,tdd2):
-    #tdd2/tdd1,the result is like [tdd1,1,tdd2/tdd1]
-    if tdd1.weight==0:
-        return [tdd2.self_copy(),tdd1,get_one_state()]
+def normalize_2_fun(bdd1,bdd2):
+    #bdd2/bdd1,the result is like [bdd1,1,bdd2/bdd1]
+    if bdd1.weight==0:
+        return [bdd2.self_copy(),bdd1,get_one_state()]
     
-    if tdd2.weight==0:
-        return [tdd1.self_copy(),get_one_state(),tdd2.self_copy()]    
+    if bdd2.weight==0:
+        return [bdd1.self_copy(),get_one_state(),bdd2.self_copy()]    
     
-    if tdd1.node.key==-1:
-        temp=tdd2.self_copy()
-        temp.weight/=tdd1.weight
-        return [tdd1.self_copy(),get_one_state(),temp]
+    if bdd1.node.key==-1:
+        temp=bdd2.self_copy()
+        temp.weight/=bdd1.weight
+        return [bdd1.self_copy(),get_one_state(),temp]
     
-    if tdd1.node==tdd2.node:
+    if bdd1.node==bdd2.node:
         temp=get_one_state()
-        temp.weight=tdd2.weight/tdd1.weight
-        return [tdd1.self_copy(),get_one_state(),temp]
+        temp.weight=bdd2.weight/bdd1.weight
+        return [bdd1.self_copy(),get_one_state(),temp]
     
-    # return [get_one_state(),tdd1,tdd2]
+    # return [get_one_state(),bdd1,bdd2]
 
-    w1=tdd1.weight
-    w2=tdd2.weight
-    tdd1.weight=1
-    tdd2.weight=1
+    w1=bdd1.weight
+    w2=bdd2.weight
+    bdd1.weight=1
+    bdd2.weight=1
     
-    if find_computed_table(['/',tdd1,tdd2]):
-        [a,b,c]=find_computed_table(['/',tdd1,tdd2])
+    if find_computed_table(['/',bdd1,bdd2]):
+        [a,b,c]=find_computed_table(['/',bdd1,bdd2])
         a.weight*=w1
         c.weight*=w2/w1
-        tdd1.weight=w1
-        tdd2.weight=w2
+        bdd1.weight=w1
+        bdd2.weight=w2
         return [a,b,c]
     
     min_degree=dict()
-    for key in tdd1.node.index_degree:
-        if key in tdd2.node.index_degree:
-            if min(tdd1.node.index_degree[key],tdd2.node.index_degree[key])>0:
-                min_degree[key]=min(tdd1.node.index_degree[key],tdd2.node.index_degree[key])
+    for key in bdd1.node.index_degree:
+        if key in bdd2.node.index_degree:
+            if min(bdd1.node.index_degree[key],bdd2.node.index_degree[key])>0:
+                min_degree[key]=min(bdd1.node.index_degree[key],bdd2.node.index_degree[key])
                 
     a=get_one_state()                
     if len(min_degree)>0:
 #         print(min_degree)
-        b=reduce_degree(tdd1,min_degree)
-        c=reduce_degree(tdd2,min_degree)
+        b=reduce_degree(bdd1,min_degree)
+        c=reduce_degree(bdd2,min_degree)
         min_degree_order=[[global_index_order[k],k] for k in min_degree]
         while len(min_degree_order)>0:
             key=min_degree_order.pop()[1]
             a=normalize(key,[[min_degree[key],1,a.node]])        
     else:
-        b=tdd1.self_copy()
-        c=tdd2.self_copy()
+        b=bdd1.self_copy()
+        c=bdd2.self_copy()
     
     a.weight=b.weight
     b.weight=1
     c.weight/=a.weight
-#     w=max(tdd1.weight,tdd2.weight)
-#     if not get_int_key(tdd1.weight)==(0,0):
-#         w=tdd1.weight
+#     w=max(bdd1.weight,bdd2.weight)
+#     if not get_int_key(bdd1.weight)==(0,0):
+#         w=bdd1.weight
 #     else:
-#         w=tdd2.weight
+#         w=bdd2.weight
 #     a=BDD(Find_Or_Add_Unique_table(-1))
 #     a.weight=w
-#     b=tdd1.self_copy()
-#     b.weight=tdd1.weight/w
-#     c=tdd2.self_copy()
-#     c.weight=tdd2.weight/w
-    insert_2_computed_table(['/',tdd1,tdd2],[a,b,c])
+#     b=bdd1.self_copy()
+#     b.weight=bdd1.weight/w
+#     c=bdd2.self_copy()
+#     c.weight=bdd2.weight/w
+    insert_2_computed_table(['/',bdd1,bdd2],[a,b,c])
     
     a.weight*=w1
     c.weight*=w2/w1
-    tdd1.weight=w1
-    tdd2.weight=w2
+    bdd1.weight=w1
+    bdd2.weight=w2
     return [a,b,c]        
     
     
@@ -844,16 +844,16 @@ def get_value_node2(node,val,the_key=None):
     node.value[the_key]=res
     return res
 
-def conjugate(tdd):
-    """"change the position of x and y, x<y in this tdd
+def conjugate(bdd):
+    """"change the position of x and y, x<y in this bdd
     """
-    v=tdd.node.key
+    v=bdd.node.key
     if v==-1:
-        res=tdd.self_copy()
-        res.weight=tdd.weight.conjugate()      
+        res=bdd.self_copy()
+        res.weight=bdd.weight.conjugate()      
         return res
     the_successor=[]
-    for k in tdd.node.successor:
+    for k in bdd.node.successor:
         temp_res=conjugate(BDD(k[2]))
         the_successor.append([k[0],k[1].conjugate()*temp_res.weight,temp_res.node])
     res=normalize(v,the_successor)
@@ -862,10 +862,10 @@ def conjugate(tdd):
 
 def var_sort (var):
     global global_index_order, inverse_global_index_order
-    print('BDD 849', var, inverse_global_index_order, global_index_order)
+    # print('BDD 849', var, inverse_global_index_order, global_index_order)
     idx=[global_index_order[k] for k in var]
     idx.sort( )
-    print('BDD 853', idx)
+    # print('BDD 853', idx)
     var_sort= [inverse_global_index_order[k] for k in idx]
 
     return var_sort
@@ -881,33 +881,34 @@ def cont(mode,bdd1,bdd2):
     idx_2_key={-1:-1}
     key_2_idx={-1:-1}
     
-    n=0
-    for k in range(len(var_out)-1):
-        if not var_out[k] in idx_2_key:
-            idx_2_key[var_out[k]]=n
-            key_2_idx[n]=var_out[k]
-            n+=1
+
+    for new_key, idx in enumerate(var_out):
+        if idx != -1:
+            idx_2_key[idx]=new_key
+            key_2_idx[new_key]=idx
+
     print('BDD 890', idx_2_key, key_2_idx)
     #找key的對應
     key_2_new_key=[[],[]]
     #找cont的順序
     cont_order=[[],[]]
-    for k in range(len(bdd1.key_2_index)-1):
-        v=bdd1.key_2_index[k]
-        if v in idx_2_key:
-            key_2_new_key[0].append(idx_2_key[v])
-
-        cont_order[0].append(global_index_order[v])
-        
-    cont_order[0].append(float('inf'))
     
-    for k in range(len(bdd2.key_2_index)-1):     
-        v=bdd2.key_2_index[k]
-        if v in idx_2_key:
-            key_2_new_key[1].append(idx_2_key[v])
-        cont_order[1].append(global_index_order[v])
-    cont_order[1].append(float('inf'))
-    print('BDD 889',bdd1.node.key, bdd2.node.key, key_2_new_key, cont_order)
+    def set_new_key_cont_order(key_2_index,key_2_new_key,cont_order):
+        vars = var_sort(key_2_index.values())
+        print('BDD 896', key_2_index, vars, key_2_new_key,cont_order)
+
+        for v in vars:
+            assert v in idx_2_key, 'v=%s not found in idx_2_key'%v
+            key_2_new_key.append(idx_2_key[v])
+            cont_order.append(global_index_order[v])
+        if cont_order[-1] !=float('inf'):
+            cont_order.append(float('inf'))
+    
+    set_new_key_cont_order(bdd1.key_2_index, key_2_new_key[0], cont_order[0])
+    set_new_key_cont_order(bdd2.key_2_index, key_2_new_key[1], cont_order[1])
+
+    print('BDD 889',bdd1, bdd2, key_2_new_key, cont_order ,var_out, key_2_idx)
+    
     if mode =='mul':
         bdd=mul2(bdd1,bdd2,key_2_new_key,cont_order)
     if mode =='add':
@@ -919,16 +920,18 @@ def cont(mode,bdd1,bdd2):
 
 
 def mul2(bdd1,bdd2,key_2_new_key,cont_order):
-    """The contraction of two TDDs, var_cont is in the form [[4,1],[3,2]]"""
+    """The contraction of two bdds, var_cont is in the form [[4,1],[3,2]]"""
     global global_index_order ,inverse_global_index_order
 
-    k1=bdd1.node.key
-    k2=bdd2.node.key
-    w1=bdd1.weight
-    w2=bdd2.weight
-    print('BDD 906', k1, k2, key_2_new_key, cont_order)
+    k1 = bdd1.node.key
+    k2 = bdd2.node.key
+    w1 = bdd1.weight
+    w2 = bdd2.weight
+    print('BDD 928', k1, k2, key_2_new_key, cont_order)
+    
+    weig = w1 * w2
+
     if k1==k2==-1:
-        weig = bdd1.weight * bdd2.weight
         term = Find_Or_Add_Unique_table(-1)
         res = BDD(term)        
         if get_int_key(weig) == (0,0):
@@ -937,29 +940,37 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
         else:
             res.weight=weig
             return res        
-
     if k1==-1:
         if w1==0:
-            tdd=BDD(bdd1.node)
-            tdd.weight=0
-            return tdd
+            bdd=BDD(bdd1.node)
+            bdd.weight=0
+            return bdd
 
-        tdd=BDD(bdd2.node)
-        tdd.weight=w1*w2
-        return tdd
+        bdd=BDD(bdd2.node)
+        bdd.weight = weig
+
+        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[1] if new_key != -1}
+        bdd.key_2_index[-1] = -1
+        bdd.index_set = var_sort(bdd.key_2_index.values())
+        print('BDD 949 bdd: ', bdd,' k2idx: ', key_2_new_key, bdd.key_2_index, bdd.index_set)
+        return bdd
             
     if k2==-1:
         if w2==0:
-            tdd=BDD(bdd2.node)
-            tdd.weight=0
-            return tdd        
+            bdd=BDD(bdd2.node)
+            bdd.weight=0
+            return bdd        
 
-        tdd=BDD(bdd1.node)
-        tdd.weight=w1*w2
-        return tdd
+        bdd=BDD(bdd1.node)
+        bdd.weight=weig
+        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[0] if new_key != -1}
+        bdd.key_2_index[-1] = -1
+        bdd.index_set = var_sort(bdd.key_2_index.values())
+        print('BDD 960 bdd:', bdd2, ' k2idx: ',key_2_new_key, bdd.key_2_index, bdd.index_set)
+        return bdd
     
-    bdd1.weight=1
-    bdd2.weight=1
+    # bdd1.weight=1
+    # bdd2.weight=1
     
     temp_key_2_new_key=[]
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0][:(k1+1)]]))
@@ -969,40 +980,44 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0]]))
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1]]))
 
-    tdd=find_computed_table(['*',bdd1,bdd2,temp_key_2_new_key])
-    # tdd=find_computed_table(['*',bdd1,bdd2,key_2_new_key])
-    if tdd:
-
-        tdd.weight=tdd.weight*w1*w2
+    # bdd=find_computed_table(['*',bdd1,bdd2,temp_key_2_new_key])
+    bdd=None
+    # bdd=find_computed_table(['*',bdd1,bdd2,key_2_new_key])
+    if bdd:
+        bdd.weight=bdd.weight*weig
         bdd1.weight=w1
         bdd2.weight=w2        
-        return tdd
+        return bdd
               
-    tdd=BDD(bdd2.node)
-    tdd.weight=0
-    print('BDD 962',temp_key_2_new_key ,cont_order,k1,k2)
-    cont_order_len = len(cont_order)
-    cont_order0 =  cont_order[0][k1] if k1 > cont_order_len else cont_order[0][k1-1]
-    cont_order1 =  cont_order[1][k2] if k2 > cont_order_len else cont_order[0][k2-1]
+    bdd=BDD(bdd2.node)
+    bdd.weight=0
+    print('BDD 983',temp_key_2_new_key ,cont_order,k1,k2)
+
+    # assert k1 < len(cont_order[0])
+    # assert k2 < len(cont_order[1])
+    # cont_order0 =  cont_order[0][k1] if k1 > len(cont_order[0]) else cont_order[0][k1-1]
+    # cont_order1 =  cont_order[1][k2] if k2 > len(cont_order[1]) else cont_order[1][k2-1]
+    cont_order0 =  cont_order[0][k1] 
+    cont_order1 =  cont_order[1][k2] 
     if cont_order0 == cont_order1:
         for succ1 in bdd1.node.successor:
             for succ2 in bdd2.node.successor:
                 temp_bdd1=BDD(succ1[2])
                 temp_bdd1.weight=succ1[1]
-                temp_tdd2=BDD(succ2[2])
-                temp_tdd2.weight=succ2[1]            
-                temp_res=mul2(temp_bdd1,temp_tdd2,key_2_new_key,cont_order)
-                print('BDD 978', key_2_new_key, k1)
+                temp_bdd2=BDD(succ2[2])
+                temp_bdd2.weight=succ2[1]            
+                temp_res=mul2(temp_bdd1,temp_bdd2,key_2_new_key,cont_order)
+                print('BDD 999', key_2_new_key, k1)
                 if not succ1[0]+succ2[0]==0:
-                    if succ1[0]+succ2[0]==2 and k1 % 2 == 1: 
+                    if succ1[0]+succ2[0]==2 and k1 % 2 == 0: 
                         temp_res1=normalize(k1 + 1,[[2,-1,Find_Or_Add_Unique_table(-1)]])
                         temp_res1=mul2(temp_res1,temp_res,key_2_new_key,cont_order)
                         # temp_res=add(temp_res,temp_res1)
                         temp_res=add2(temp_res,temp_res1,key_2_new_key,cont_order)
                     else:
                         temp_res=normalize(k1 ,[[succ1[0]+succ2[0],temp_res.weight,temp_res.node]])
-                # tdd=add(tdd,temp_res)
-                tdd=add2(tdd,temp_res,key_2_new_key,cont_order)
+                # bdd=add(bdd,temp_res)
+                bdd=add2(bdd,temp_res,key_2_new_key,cont_order)
     elif cont_order0 <= cont_order1:
         the_successor=[]
         for succ1 in bdd1.node.successor:
@@ -1010,33 +1025,44 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
             temp_bdd1.weight=succ1[1]
             temp_res=mul2(temp_bdd1, bdd2, key_2_new_key, cont_order)
             the_successor.append([succ1[0],temp_res.weight,temp_res.node])
-            tdd=normalize(key_2_new_key[0][k1],the_successor)
+            bdd=normalize(key_2_new_key[0][k1],the_successor)
     else:
         the_successor=[]
         for succ2 in bdd2.node.successor:
-            temp_tdd2=BDD(succ2[2])
-            temp_tdd2.weight=succ2[1]
-            temp_res=mul2(bdd1, temp_tdd2 ,key_2_new_key, cont_order)
+            temp_bdd2=BDD(succ2[2])
+            temp_bdd2.weight=succ2[1]
+            temp_res=mul2(bdd1, temp_bdd2 ,key_2_new_key, cont_order)
             the_successor.append([succ2[0],temp_res.weight,temp_res.node])
-            tdd=normalize(key_2_new_key[1][k2],the_successor)        
+            bdd=normalize(key_2_new_key[1][k2],the_successor)        
             
-    insert_2_computed_table(['*',bdd1,bdd2,temp_key_2_new_key],tdd)
-    tdd.weight=tdd.weight*w1*w2
+    # insert_2_computed_table(['*',bdd1,bdd2,temp_key_2_new_key],bdd)
+    bdd.weight=bdd.weight*weig
     bdd1.weight=w1
     bdd2.weight=w2
-    
-    return tdd      
+    print('BDD 1031',bdd)
+    return bdd      
 
 
 def add2(bdd1,bdd2,key_2_new_key,cont_order):
-    """The apply function of two TDDs. Mostly, it is used to do addition here."""
+    """The apply function of two bdds. Mostly, it is used to do addition here."""
     global global_index_order    
     
     if bdd1.weight==0:
-        return bdd2.self_copy()
+        bdd = bdd2.self_copy()
+        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[1] if new_key != -1}
+        bdd.key_2_index[-1] = -1
+        bdd.index_set = var_sort(bdd.key_2_index.values())
+        print('BDD 1054 bdd: ', bdd,' k2idx: ', key_2_new_key, bdd.key_2_index, bdd.index_set)
+        return bdd
     
     if bdd2.weight==0:
-        return bdd1.self_copy()
+        bdd = bdd1.self_copy()
+        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[0] if new_key != -1}
+        bdd.key_2_index[-1] = -1
+        bdd.index_set = var_sort(bdd.key_2_index.values())
+        print('BDD 1062 bdd: ', bdd,' k2idx: ', key_2_new_key, bdd.key_2_index, bdd.index_set)
+
+        return bdd
     
     k1=bdd1.node.key
     k2=bdd2.node.key
@@ -1045,15 +1071,16 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[0]]))
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1]]))
 
-    if find_computed_table(['+',bdd1,bdd2,temp_key_2_new_key]):
-        return find_computed_table(['+',bdd1,bdd2,temp_key_2_new_key])
+    # if find_computed_table(['+',bdd1,bdd2,temp_key_2_new_key]):
+    #     return find_computed_table(['+',bdd1,bdd2,temp_key_2_new_key])
     
     
     print('BDD 1041', k1, k2, key_2_new_key, cont_order)
     the_successor=[]
-    cont_order_len = len(cont_order)
-    cont_order0 =  cont_order[0][k1] if k1 > cont_order_len else cont_order[0][k1-1]
-    cont_order1 =  cont_order[1][k2] if k2 > cont_order_len else cont_order[0][k2-1]
+    # cont_order0 =  cont_order[0][k1] if k1 > len(cont_order[0]) else cont_order[0][k1-1]
+    # cont_order1 =  cont_order[1][k2] if k2 > len(cont_order[1]) else cont_order[1][k2-1]
+    cont_order0 =  cont_order[0][k1] 
+    cont_order1 =  cont_order[1][k2] 
     """worng"""
     if cont_order0 == cont_order1:
         the_key = key_2_new_key[0][k1]
@@ -1064,22 +1091,22 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
         com_degree=[d for d in degree1 if d in degree2]
         for d in com_degree:
             pos1=degree1.index(d)
-            temp_tdd1=BDD(bdd1.node.successor[pos1][2])
-            temp_tdd1.weight=bdd1.node.successor[pos1][1] * bdd1.weight
+            temp_bdd1=BDD(bdd1.node.successor[pos1][2])
+            temp_bdd1.weight=bdd1.node.successor[pos1][1] * bdd1.weight
             pos2=degree2.index(d)
-            temp_tdd2=BDD(bdd2.node.successor[pos2][2])
-            temp_tdd2.weight=bdd2.node.successor[pos2][1] * bdd2.weight          
-            temp_res=add2(temp_tdd1,temp_tdd2,key_2_new_key,cont_order)
-#             print(temp_tdd1,temp_tdd2,temp_res)
+            temp_bdd2=BDD(bdd2.node.successor[pos2][2])
+            temp_bdd2.weight=bdd2.node.successor[pos2][1] * bdd2.weight          
+            temp_res=add2(temp_bdd1,temp_bdd2,key_2_new_key,cont_order)
+#             print(temp_bdd1,temp_bdd2,temp_res)
             the_successor.append([d,temp_res.weight,temp_res.node])
     elif cont_order0 <= cont_order1:
     # elif global_index_order[k1]<=global_index_order[k2]:
         the_key = key_2_new_key[0][k1]
         print('BDD 1061', bdd1.node.successor)
         if bdd1.node.successor[0][0] == 0:
-            temp_tdd1=BDD(bdd1.node.successor[0][2])
-            temp_tdd1.weight=bdd1.node.successor[0][1] * bdd1.weight
-            temp_res=add2(temp_tdd1,bdd2,key_2_new_key,cont_order)
+            temp_bdd1=BDD(bdd1.node.successor[0][2])
+            temp_bdd1.weight=bdd1.node.successor[0][1] * bdd1.weight
+            temp_res=add2(temp_bdd1,bdd2,key_2_new_key,cont_order)
             the_successor.append([0,temp_res.weight,temp_res.node])
             the_successor+=[[succ[0],succ[1]*bdd1.weight,succ[2]] for succ in bdd1.node.successor[1:]]
         else:
@@ -1088,9 +1115,9 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
     else:
         the_key = key_2_new_key[0][k2]
         if bdd2.node.successor[0][0]==0:
-            temp_tdd2=BDD(bdd2.node.successor[0][2])
-            temp_tdd2.weight=bdd2.node.successor[0][1]*bdd2.weight
-            temp_res=add2(bdd1,temp_tdd2,key_2_new_key,cont_order)
+            temp_bdd2=BDD(bdd2.node.successor[0][2])
+            temp_bdd2.weight=bdd2.node.successor[0][1]*bdd2.weight
+            temp_res=add2(bdd1,temp_bdd2,key_2_new_key,cont_order)
             the_successor.append([0,temp_res.weight,temp_res.node])
             the_successor+=[[succ[0],succ[1]*bdd2.weight,succ[2]] for succ in bdd2.node.successor[1:]]
         else:
@@ -1098,8 +1125,8 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
             the_successor+=[[succ[0],succ[1]*bdd2.weight,succ[2]] for succ in bdd2.node.successor]          
             
     res = normalize(the_key,the_successor)
-    insert_2_computed_table(['+',bdd1,bdd2,temp_key_2_new_key],res)
-#     print(res)
+    # insert_2_computed_table(['+',bdd1,bdd2,temp_key_2_new_key],res)
+    print('BDD 1106',res)
 #     print('-----------')
     return res
 
@@ -1235,7 +1262,7 @@ def mul3(bdd1, bdd2):
 @hashed_args #為了達成交換率，先排序輸入的兩個bdd
 @lru_cache(maxsize=None)
 def add3(bdd1, bdd2):
-    """The apply function of two TDDs. Mostly, it is used to do addition here."""
+    """The apply function of two bdds. Mostly, it is used to do addition here."""
     global global_index_order    
 
     if bdd1.weight == 0:
@@ -1269,22 +1296,22 @@ def add3(bdd1, bdd2):
         com_degree=[d for d in degree1 if d in degree2]
         for d in com_degree:
             pos1=degree1.index(d)
-            temp_tdd1=BDD(bdd1.node.successor[pos1][2])
-            temp_tdd1.weight=bdd1.node.successor[pos1][1]*bdd1.weight
+            temp_bdd1=BDD(bdd1.node.successor[pos1][2])
+            temp_bdd1.weight=bdd1.node.successor[pos1][1]*bdd1.weight
             pos2=degree2.index(d)
-            temp_tdd2=BDD(bdd2.node.successor[pos2][2])
-            temp_tdd2.weight=bdd2.node.successor[pos2][1]*bdd2.weight          
-            temp_res=add3(temp_tdd1,temp_tdd2)
-#             print(temp_tdd1,temp_tdd2,temp_res)
+            temp_bdd2=BDD(bdd2.node.successor[pos2][2])
+            temp_bdd2.weight=bdd2.node.successor[pos2][1]*bdd2.weight          
+            temp_res=add3(temp_bdd1,temp_bdd2)
+#             print(temp_bdd1,temp_bdd2,temp_res)
             the_successor.append([d,temp_res.weight,temp_res.node])
     elif k1 <= k2:
     # elif global_index_order[k1]<=global_index_order[k2]:
         the_key = k1
         print('BDD 649',bdd1.node)
         if bdd1.node.successor[0][0] == 0:
-            temp_tdd1=BDD(bdd1.node.successor[0][2])
-            temp_tdd1.weight=bdd1.node.successor[0][1] * bdd1.weight
-            temp_res=add3(temp_tdd1,bdd2)
+            temp_bdd1=BDD(bdd1.node.successor[0][2])
+            temp_bdd1.weight=bdd1.node.successor[0][1] * bdd1.weight
+            temp_res=add3(temp_bdd1,bdd2)
             the_successor.append([0,temp_res.weight,temp_res.node])
             the_successor+=[[succ[0],succ[1] * bdd1.weight,succ[2]] for succ in bdd1.node.successor[1:]]
         else:
@@ -1293,9 +1320,9 @@ def add3(bdd1, bdd2):
     else:
         the_key = k2
         if bdd2.node.successor[0][0]==0:
-            temp_tdd2=BDD(bdd2.node.successor[0][2])
-            temp_tdd2.weight=bdd2.node.successor[0][1] * bdd2.weight
-            temp_res=add3(bdd1,temp_tdd2)
+            temp_bdd2=BDD(bdd2.node.successor[0][2])
+            temp_bdd2.weight=bdd2.node.successor[0][1] * bdd2.weight
+            temp_res=add3(bdd1,temp_bdd2)
             the_successor.append([0,temp_res.weight,temp_res.node])
             the_successor+=[[succ[0],succ[1] * bdd2.weight,succ[2]] for succ in bdd2.node.successor[1:]]
         else:
