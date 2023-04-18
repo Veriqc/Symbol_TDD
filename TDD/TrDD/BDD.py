@@ -71,16 +71,16 @@ class Node:
             res+=nsimplify(succ[1]*sp_expr**succ[0],tolerance=1e-3)*succ[2].expr
         self._expr=res
         return res
+    
+    
 
 
 class BDD:
-    def __init__(self,node):
+    def __init__(self,node, weight=1 ,key_2_index= {-1:-1}):
         """BDD"""
-        self._weight=1
+        self._weight = weight
         self._expr=None
-
-        self.key_2_index={-1:-1}
-        self.index_set=[]
+        self.key_2_index = key_2_index
 
         if isinstance(node,Node):
             self.node=node
@@ -111,6 +111,8 @@ class BDD:
     def self_copy(self):
         temp = BDD(self.node)
         temp.weight = self.weight
+        temp.key_2_index = self.key_2_index.copy()
+        temp._expr = self._expr
         return temp
     
     def show(self,real_label=True):
@@ -170,6 +172,18 @@ class BDD:
         res=get_value_node2(self.node,val)
         return self.weight*res    
     
+    '''
+    0 1 2 3 4 5 6 7 
+    0 1 2 3
+    0 1     4 5 -> 0 1 2 3 
+    '''
+    
+    def get_key_2_index_subdict(self, top_node, subdict=dict()):
+        subdict[top_node.key] = self.key_2_index[top_node.key]
+        for succ in top_node.successor:
+            self.get_key_2_index_subdict(succ[2], subdict)
+        return subdict
+
     def __hash__(self):
         return hash(self.__repr__())
     
@@ -320,10 +334,10 @@ def Find_Or_Add_Unique_table(x,the_successors=[]):
     return res
 
 
-def normalize(x,the_successors):
+def normalize(key, the_successors):
     """The normalize and reduce procedure"""
-    if not isinstance(x,int):
-        print('BDD 330',x)
+    if not isinstance(key, int):
+        print('BDD 330', key)
     global epi
 
     all_zero=True
@@ -339,18 +353,14 @@ def normalize(x,the_successors):
         the_successors.remove(succ)
 
     if all_zero:
-        res=BDD(Find_Or_Add_Unique_table(-1))
-        res.weight=0
-        return res
+        return BDD(Find_Or_Add_Unique_table(-1),weight=0)
 
     if len(the_successors)==1 and the_successors[0][0]==0:
         if not get_int_key(the_successors[0][1])==(0,0):
-            res=BDD(the_successors[0][2])
-            res.weight=the_successors[0][1]
-            # res.weight=nsimplify(the_successors[0][1],tolerance=1e-3)
+            succ = the_successors[0]
+            res=BDD(succ[2], weight=succ[1])
         else:
-            res=BDD(Find_Or_Add_Unique_table(-1))
-            res.weight=0
+            res = BDD(Find_Or_Add_Unique_table(-1),weight=0)
         return res
     
     the_successors.sort()
@@ -364,9 +374,8 @@ def normalize(x,the_successors):
     
     the_successors=[[succ[0],succ[1]/weig_max,succ[2]] for succ in the_successors]
     
-    node=Find_Or_Add_Unique_table(x,the_successors)
-    res=BDD(node)
-    res.weight=weig_max
+    node=Find_Or_Add_Unique_table(key, the_successors)
+    res=BDD(node ,weight=weig_max)
     
     return res
 
@@ -490,13 +499,14 @@ def get_bdd(function):
         str_func = str(function)
         order = global_index_order[str_func]
         
-        bdd=normalize( order % 2, [[1,1,Find_Or_Add_Unique_table(-1)]])
-        bdd.index_set=[global_index_order['sin(%s)'%symbol_name],global_index_order['cos(%s)'%symbol_name]]
+        # bdd=normalize( order % 2, [[1,1,Find_Or_Add_Unique_table(-1)]])
+        bdd = BDD(Node(order % 2))
+        bdd.node.successor = [[1,1,Find_Or_Add_Unique_table(-1)]]
         bdd.key_2_index[0]='cos(%s)'%symbol_name
         bdd.key_2_index[1]='sin(%s)'%symbol_name
         bdd.key_2_index[-1]=-1
 
-        # print('BDD 481',bdd.key_2_index)
+        print('BDD 507',bdd)
         return bdd
     # print('BDD 483', type(function))
     if isinstance(function,sp.core.add.Add):
@@ -583,7 +593,7 @@ def mul(bdd1,bdd2):
                 temp_res=mul(temp_bdd1,temp_bdd2)
                 if not succ1[0]+succ2[0]==0:
                     # if succ1[0]+succ2[0]==2 and k1[:3]=='sin':
-                    if succ1[0]+succ2[0]==2 and k1 % 2 == 0 :
+                    if succ1[0]+succ2[0]==2 and k1 % 2 == 1 :
                         temp_res1=normalize( k1 + 1,[[2,-1,Find_Or_Add_Unique_table(-1)]])
                         temp_res1=mul(temp_res1,temp_res)
                         temp_res=add(temp_res,temp_res1)
@@ -874,10 +884,16 @@ def cont(mode,bdd1,bdd2):
     #找出哪些要輸出(cont)/保留(out)
     var_out1=set(bdd1.key_2_index.values())
     var_out2=set(bdd2.key_2_index.values())
-    print('BDD 877',bdd1.node.key,bdd2.node.key,bdd1.key_2_index.values(), bdd2.key_2_index.values() ,var_out1, var_out2 ,bdd1.key_2_index , bdd2.key_2_index)
+    print('BDD 877', 
+          '\n   bdd:',bdd1, bdd2, 
+          '\n   bdd node:', bdd1.node.key,bdd2.node.key, 
+          '\n   key_2_index', bdd1.key_2_index, bdd2.key_2_index)
     var_out=list(var_out1.union(var_out2))
     var_out=var_sort(var_out) #Index 已含有比較大小的函數
-    print('BDD 880', var_out)
+    print('BDD 880',
+          '\n   var_out1:', var_out1, 
+          '\n   var_out2:', var_out2,
+          '\n   var_out:', var_out)
     idx_2_key={-1:-1}
     key_2_idx={-1:-1}
     
@@ -887,39 +903,38 @@ def cont(mode,bdd1,bdd2):
             idx_2_key[idx]=new_key
             key_2_idx[new_key]=idx
 
-    print('BDD 890', idx_2_key, key_2_idx)
+    print('BDD 890',
+          '\n   idx_2_key', idx_2_key,
+          '\n   key_2_idx:',  key_2_idx)
     #找key的對應
     key_2_new_key=[[],[]]
-    #找cont的順序
-    cont_order=[[],[]]
+
     
-    def set_new_key_cont_order(key_2_index,key_2_new_key,cont_order):
+    def set_new_key(key_2_index,key_2_new_key):
         vars = var_sort(key_2_index.values())
-        print('BDD 896', key_2_index, vars, key_2_new_key,cont_order)
+        print('BDD 896', key_2_index, vars, key_2_new_key)
 
         for v in vars:
             assert v in idx_2_key, 'v=%s not found in idx_2_key'%v
             key_2_new_key.append(idx_2_key[v])
-            cont_order.append(global_index_order[v])
-        if cont_order[-1] !=float('inf'):
-            cont_order.append(float('inf'))
-    
-    set_new_key_cont_order(bdd1.key_2_index, key_2_new_key[0], cont_order[0])
-    set_new_key_cont_order(bdd2.key_2_index, key_2_new_key[1], cont_order[1])
 
-    print('BDD 889',bdd1, bdd2, key_2_new_key, cont_order ,var_out, key_2_idx)
+    
+    set_new_key(bdd1.key_2_index, key_2_new_key[0])
+    set_new_key(bdd2.key_2_index, key_2_new_key[1])
+
+    print('BDD 889 key_2_new_key', key_2_new_key )
     
     if mode =='mul':
-        bdd=mul2(bdd1,bdd2,key_2_new_key,cont_order)
+        bdd=mul2(bdd1,bdd2,key_2_new_key)
     if mode =='add':
-        bdd=add2(bdd1,bdd2,key_2_new_key,cont_order)
-    bdd.index_set=var_out
+        bdd=add2(bdd1,bdd2,key_2_new_key)
+    # bdd.index_set=var_out
     bdd.key_2_index=key_2_idx
 
     return bdd
 
 
-def mul2(bdd1,bdd2,key_2_new_key,cont_order):
+def mul2(bdd1,bdd2,key_2_new_key):
     """The contraction of two bdds, var_cont is in the form [[4,1],[3,2]]"""
     global global_index_order ,inverse_global_index_order
 
@@ -927,47 +942,31 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
     k2 = bdd2.node.key
     w1 = bdd1.weight
     w2 = bdd2.weight
-    print('BDD 928', k1, k2, key_2_new_key, cont_order)
+    print('BDD 928', k1, k2, key_2_new_key)
     
     weig = w1 * w2
 
     if k1==k2==-1:
         term = Find_Or_Add_Unique_table(-1)
-        res = BDD(term)        
-        if get_int_key(weig) == (0,0):
-            res.weight=0
-            return res
-        else:
-            res.weight=weig
-            return res        
+        weig = 0 if get_int_key(weig) == (0,0) else weig
+        return BDD(term, weight = weig)        
+
     if k1==-1:
         if w1==0:
-            bdd=BDD(bdd1.node)
-            bdd.weight=0
-            return bdd
+            return BDD(bdd1.node,weight=0)
 
-        bdd=BDD(bdd2.node)
-        bdd.weight = weig
+        key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[1] if new_key != -1}
+        key_2_index[-1] = -1
 
-        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[1] if new_key != -1}
-        bdd.key_2_index[-1] = -1
-        bdd.index_set = var_sort(bdd.key_2_index.values())
-        print('BDD 949 bdd: ', bdd,' k2idx: ', key_2_new_key, bdd.key_2_index, bdd.index_set)
-        return bdd
+        return BDD(bdd2.node, weight = weig, key_2_index = key_2_index)
             
     if k2==-1:
         if w2==0:
-            bdd=BDD(bdd2.node)
-            bdd.weight=0
-            return bdd        
-
-        bdd=BDD(bdd1.node)
-        bdd.weight=weig
-        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[0] if new_key != -1}
-        bdd.key_2_index[-1] = -1
-        bdd.index_set = var_sort(bdd.key_2_index.values())
-        print('BDD 960 bdd:', bdd2, ' k2idx: ',key_2_new_key, bdd.key_2_index, bdd.index_set)
-        return bdd
+            return BDD(bdd2.node ,weight=0)
+ 
+        key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[0] if new_key != -1}
+        key_2_index[-1] = -1
+        return BDD(bdd1.node, weight = weig, key_2_index = key_2_index)
     
     # bdd1.weight=1
     # bdd2.weight=1
@@ -991,47 +990,41 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
               
     bdd=BDD(bdd2.node)
     bdd.weight=0
-    print('BDD 983',temp_key_2_new_key ,cont_order,k1,k2)
+    print('BDD 983',temp_key_2_new_key ,k1,k2)
+    
+  
+    cont_order0 =  key_2_new_key[0][k1] 
+    cont_order1 =  key_2_new_key[1][k2] 
 
-    # assert k1 < len(cont_order[0])
-    # assert k2 < len(cont_order[1])
-    # cont_order0 =  cont_order[0][k1] if k1 > len(cont_order[0]) else cont_order[0][k1-1]
-    # cont_order1 =  cont_order[1][k2] if k2 > len(cont_order[1]) else cont_order[1][k2-1]
-    cont_order0 =  cont_order[0][k1] 
-    cont_order1 =  cont_order[1][k2] 
+    #A successor is in this form [degree, weight, node]
     if cont_order0 == cont_order1:
         for succ1 in bdd1.node.successor:
             for succ2 in bdd2.node.successor:
-                temp_bdd1=BDD(succ1[2])
-                temp_bdd1.weight=succ1[1]
-                temp_bdd2=BDD(succ2[2])
-                temp_bdd2.weight=succ2[1]            
-                temp_res=mul2(temp_bdd1,temp_bdd2,key_2_new_key,cont_order)
+                temp_bdd1=BDD(succ1[2], weight=succ1[1], key_2_index= bdd1.get_key_2_index_subdict(succ1[2]))
+                temp_bdd2=BDD(succ2[2], weight=succ2[1], key_2_index= bdd2.get_key_2_index_subdict(succ2[2]))
+        
+                temp_res = mul2(temp_bdd1,temp_bdd2, key_2_new_key)
                 print('BDD 999', key_2_new_key, k1)
                 if not succ1[0]+succ2[0]==0:
-                    if succ1[0]+succ2[0]==2 and k1 % 2 == 0: 
+                    if succ1[0]+succ2[0]==2 and k1 % 2 == 1: 
                         temp_res1=normalize(k1 + 1,[[2,-1,Find_Or_Add_Unique_table(-1)]])
-                        temp_res1=mul2(temp_res1,temp_res,key_2_new_key,cont_order)
-                        # temp_res=add(temp_res,temp_res1)
-                        temp_res=add2(temp_res,temp_res1,key_2_new_key,cont_order)
+                        temp_res1=mul2(temp_res1,temp_res,key_2_new_key)
+                        temp_res=add2(temp_res,temp_res1,key_2_new_key)
                     else:
                         temp_res=normalize(k1 ,[[succ1[0]+succ2[0],temp_res.weight,temp_res.node]])
-                # bdd=add(bdd,temp_res)
-                bdd=add2(bdd,temp_res,key_2_new_key,cont_order)
+                bdd=add2(bdd,temp_res,key_2_new_key)
     elif cont_order0 <= cont_order1:
         the_successor=[]
         for succ1 in bdd1.node.successor:
-            temp_bdd1=BDD(succ1[2])
-            temp_bdd1.weight=succ1[1]
-            temp_res=mul2(temp_bdd1, bdd2, key_2_new_key, cont_order)
+            temp_bdd1=BDD(succ1[2], weight=succ1[1], key_2_index= bdd1.get_key_2_index_subdict(succ1[2]))
+            temp_res=mul2(temp_bdd1, bdd2, key_2_new_key)
             the_successor.append([succ1[0],temp_res.weight,temp_res.node])
             bdd=normalize(key_2_new_key[0][k1],the_successor)
     else:
         the_successor=[]
         for succ2 in bdd2.node.successor:
-            temp_bdd2=BDD(succ2[2])
-            temp_bdd2.weight=succ2[1]
-            temp_res=mul2(bdd1, temp_bdd2 ,key_2_new_key, cont_order)
+            temp_bdd2=BDD(succ2[2],weight=succ2[1], key_2_index= bdd1.get_key_2_index_subdict(succ2[2]))
+            temp_res=mul2(bdd1, temp_bdd2 ,key_2_new_key)
             the_successor.append([succ2[0],temp_res.weight,temp_res.node])
             bdd=normalize(key_2_new_key[1][k2],the_successor)        
             
@@ -1043,26 +1036,16 @@ def mul2(bdd1,bdd2,key_2_new_key,cont_order):
     return bdd      
 
 
-def add2(bdd1,bdd2,key_2_new_key,cont_order):
+def add2(bdd1,bdd2,key_2_new_key):
     """The apply function of two bdds. Mostly, it is used to do addition here."""
     global global_index_order    
     
     if bdd1.weight==0:
-        bdd = bdd2.self_copy()
-        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[1] if new_key != -1}
-        bdd.key_2_index[-1] = -1
-        bdd.index_set = var_sort(bdd.key_2_index.values())
-        print('BDD 1054 bdd: ', bdd,' k2idx: ', key_2_new_key, bdd.key_2_index, bdd.index_set)
-        return bdd
+        return bdd2.self_copy()
+
     
     if bdd2.weight==0:
-        bdd = bdd1.self_copy()
-        bdd.key_2_index = {new_key:inverse_global_index_order[new_key] for new_key in key_2_new_key[0] if new_key != -1}
-        bdd.key_2_index[-1] = -1
-        bdd.index_set = var_sort(bdd.key_2_index.values())
-        print('BDD 1062 bdd: ', bdd,' k2idx: ', key_2_new_key, bdd.key_2_index, bdd.index_set)
-
-        return bdd
+        return bdd1.self_copy()
     
     k1=bdd1.node.key
     k2=bdd2.node.key
@@ -1075,12 +1058,10 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
     #     return find_computed_table(['+',bdd1,bdd2,temp_key_2_new_key])
     
     
-    print('BDD 1041', k1, k2, key_2_new_key, cont_order)
+    print('BDD 1041', k1, k2, key_2_new_key)
     the_successor=[]
-    # cont_order0 =  cont_order[0][k1] if k1 > len(cont_order[0]) else cont_order[0][k1-1]
-    # cont_order1 =  cont_order[1][k2] if k2 > len(cont_order[1]) else cont_order[1][k2-1]
-    cont_order0 =  cont_order[0][k1] 
-    cont_order1 =  cont_order[1][k2] 
+    cont_order0 =  key_2_new_key[0][k1] 
+    cont_order1 =  key_2_new_key[1][k2] 
     """worng"""
     if cont_order0 == cont_order1:
         the_key = key_2_new_key[0][k1]
@@ -1091,22 +1072,23 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
         com_degree=[d for d in degree1 if d in degree2]
         for d in com_degree:
             pos1=degree1.index(d)
-            temp_bdd1=BDD(bdd1.node.successor[pos1][2])
-            temp_bdd1.weight=bdd1.node.successor[pos1][1] * bdd1.weight
+            succ1 = bdd1.node.successor[pos1]
+            temp_bdd1=BDD(succ1[2], weight= succ1[1] * bdd1.weight , key_2_index= bdd1.get_key_2_index_subdict(succ1[2]))
+            
             pos2=degree2.index(d)
-            temp_bdd2=BDD(bdd2.node.successor[pos2][2])
-            temp_bdd2.weight=bdd2.node.successor[pos2][1] * bdd2.weight          
-            temp_res=add2(temp_bdd1,temp_bdd2,key_2_new_key,cont_order)
-#             print(temp_bdd1,temp_bdd2,temp_res)
+            succ2 = bdd2.node.successor[pos2]
+            temp_bdd2=BDD(succ2[2], weight= succ2[1] * bdd2.weight , key_2_index= bdd2.get_key_2_index_subdict(succ2[2]))
+          
+            temp_res=add2(temp_bdd1,temp_bdd2,key_2_new_key)
             the_successor.append([d,temp_res.weight,temp_res.node])
     elif cont_order0 <= cont_order1:
     # elif global_index_order[k1]<=global_index_order[k2]:
         the_key = key_2_new_key[0][k1]
         print('BDD 1061', bdd1.node.successor)
         if bdd1.node.successor[0][0] == 0:
-            temp_bdd1=BDD(bdd1.node.successor[0][2])
-            temp_bdd1.weight=bdd1.node.successor[0][1] * bdd1.weight
-            temp_res=add2(temp_bdd1,bdd2,key_2_new_key,cont_order)
+            succ1 = bdd1.node.successor[0]
+            temp_bdd1=BDD(succ1[2], weight=succ1[1] * bdd1.weight , key_2_index= bdd1.get_key_2_index_subdict(succ1[2]))
+            temp_res=add2(temp_bdd1,bdd2,key_2_new_key)
             the_successor.append([0,temp_res.weight,temp_res.node])
             the_successor+=[[succ[0],succ[1]*bdd1.weight,succ[2]] for succ in bdd1.node.successor[1:]]
         else:
@@ -1115,9 +1097,10 @@ def add2(bdd1,bdd2,key_2_new_key,cont_order):
     else:
         the_key = key_2_new_key[0][k2]
         if bdd2.node.successor[0][0]==0:
-            temp_bdd2=BDD(bdd2.node.successor[0][2])
-            temp_bdd2.weight=bdd2.node.successor[0][1]*bdd2.weight
-            temp_res=add2(bdd1,temp_bdd2,key_2_new_key,cont_order)
+            succ2 = bdd2.node.successor[0]
+            temp_bdd2=BDD(succ2[2], weight= succ2[1] *bdd2.weight , key_2_index= bdd2.get_key_2_index_subdict(succ2[2]))
+ 
+            temp_res=add2(bdd1,temp_bdd2,key_2_new_key)
             the_successor.append([0,temp_res.weight,temp_res.node])
             the_successor+=[[succ[0],succ[1]*bdd2.weight,succ[2]] for succ in bdd2.node.successor[1:]]
         else:
@@ -1233,11 +1216,11 @@ def inner_mul(bdd1, bdd2):
 @hashed_args #為了達成交換率，先排序輸入的兩個bdd
 @lru_cache(maxsize=None)
 def mul3(bdd1, bdd2):
-    print('BDD 1202',bdd1.key_2_index,bdd1.index_set)
-    print('BDD 1203',bdd2.key_2_index,bdd2.index_set)
+    print('BDD 1202',bdd1.key_2_index)
+    print('BDD 1203',bdd2.key_2_index)
 
     #get union key_2_index and index_set
-    index_set=list(set(bdd1.index_set).union(set(bdd2.index_set)))
+    index_set=list(set(bdd1.key_2_index.values()).union(set(bdd2.key_2_index.values())))
     index_set.sort
     key_2_index=dict()
     for k in index_set:
