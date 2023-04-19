@@ -32,7 +32,7 @@ version = {attr = "symtdd.VERSION"}
 
 [tool.isort]
 profile = "black"
-skip_glob = ["TDD"]
+skip_glob = [".*", "TDD"]
 
 [tool.black]
 target-version = ["py38", "py39", "py310"]
