@@ -6,6 +6,7 @@ dependencies:
   - quimb ~= 1.4
   - graphviz ~= 7.1.0
   - python-graphviz ~= 0.20.1
+  - pip
   - pip:
-    - -e git+https://github.com/jcmgray/cotengra.git
+    - git+https://github.com/jcmgray/cotengra.git
     - -r requrirements-dev.txt
