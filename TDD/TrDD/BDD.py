@@ -156,7 +156,8 @@ class BDD:
         return cont("mul", self, g)
 
     def self_normalize(self, g):
-        return normalize_2_fun(g, self)
+        # return normalize_2_fun(g, self)
+        return cont("norm2fun", g, self)
 
     @property
     def expr(self):
@@ -682,7 +683,7 @@ def reduce_degree(bdd, min_degree):
     return res
 
 
-def normalize_2_fun(bdd1, bdd2):
+def normalize_2_fun(bdd1, bdd2, key_2_new_key):
     # bdd2/bdd1,the result is like [bdd1,1,bdd2/bdd1]
     if bdd1.weight == 0:
         return [bdd2.self_copy(), bdd1, get_one_state()]
@@ -712,26 +713,42 @@ def normalize_2_fun(bdd1, bdd2):
     if res:
         a, b, c = res
     else:
-        min_degree = dict()
-        for key in bdd1.node.index_degree:
-            if key in bdd2.node.index_degree:
-                if min(bdd1.node.index_degree[key], bdd2.node.index_degree[key]) > 0:
-                    min_degree[key] = min(
-                        bdd1.node.index_degree[key], bdd2.node.index_degree[key]
-                    )
-        print("BDD 789 min_degree", min_degree)
+
+        node1_index_degree = {key_2_new_key[0][k]:(k, v) for k, v in bdd1.node.index_degree.items()}
+        node2_index_degree = {key_2_new_key[1][k]:(k, v) for k, v in bdd2.node.index_degree.items()}
+
+        min_degree_dict = dict()
+        min_degree_dict_local1 = dict()
+        min_degree_dict_local2 = dict()
+
+        for key in node1_index_degree:
+            if key in node2_index_degree:
+                if (min_degree := min(node1_index_degree[key][1], node2_index_degree[key][1])) > 0:
+                    min_degree_dict[key] = min_degree
+                    local_key1 = node1_index_degree[key][0]
+                    local_key2 = node2_index_degree[key][0]
+                    min_degree_dict_local1[local_key1] = min_degree
+                    min_degree_dict_local2[local_key2] = min_degree
+
+        print("BDD 789 min_degree", min_degree_dict)
         a = get_one_state()
-        if len(min_degree) > 0:
+        if len(min_degree_dict) > 0:
             #         print(min_degree)
-            b = reduce_degree(bdd1, min_degree)
-            c = reduce_degree(bdd2, min_degree)
-            min_degree_order = [[global_index_order[k], k] for k in min_degree]
-            while len(min_degree_order) > 0:
-                key = min_degree_order.pop()[1]
-                a = normalize(key, [[min_degree[key], 1, a.node]])
+            b = reduce_degree(bdd1, min_degree_dict_local1)
+            c = reduce_degree(bdd2, min_degree_dict_local2)
+
+            i = 0
+            for key, degree in min_degree_dict.items():
+                is_sin = key % 2 == 1
+                if (i % 2) == 1 ^ is_sin:
+                    i += 1
+                a = normalize(i, [[degree, 1, a.node]])
+                i += 1
+
         else:
             b = bdd1.self_copy()
             c = bdd2.self_copy()
+        # TODO: revise abc's key_2_index
 
         a.weight = b.weight
         b.weight = 1
@@ -861,9 +878,15 @@ def cont(mode, bdd1, bdd2):
 
     if mode == "mul":
         bdd = mul2(bdd1, bdd2, key_2_new_key)
-    if mode == "add":
+    elif mode == "add":
         bdd = add2(bdd1, bdd2, key_2_new_key)
-    # bdd.index_set=var_out
+    elif mode == "norm2fun":
+        a, b, c = normalize_2_fun(bdd1, bdd2, key_2_new_key)
+        a.key_2_index = key_2_idx
+        b.key_2_index = key_2_idx
+        c.key_2_index = key_2_idx
+        return a, b, c
+
     bdd.key_2_index = key_2_idx
 
     return bdd
@@ -1094,7 +1117,7 @@ def add2(bdd1, bdd2, key_2_new_key):
         res = normalize(the_key, the_successor)
         insert_2_computed_table(["+", bdd1, bdd2, temp_key_2_new_key], res)
         print("BDD 1106", res)
-        
+
     return res
 
 
