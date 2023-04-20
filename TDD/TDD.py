@@ -54,8 +54,15 @@ class Node:
             self.out_weight.append(S_one)
         self.successor=[None]*num
         self.meas_prob=[]
+
     def __repr__(self) -> str:
         return str(self.key)+str(self.out_weight)+str(self.successor)
+    
+    def __hash__(self) -> int:
+        return hash(self.__repr__())
+    
+    def __eq__(self, other) -> bool:
+        return self.__repr__() == other.__repr__()
 
     def mystr(self,depth=0) -> str:
             
