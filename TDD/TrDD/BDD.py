@@ -99,15 +99,7 @@ class BDD:
 
     @weight.setter
     def weight(self, value):
-        value = [value.real, value.imag]
-        for i in range(2):
-            if math.isclose(value[i], int(value[i]), rel_tol=epi):
-                value[i] = int(value[i])
-            elif math.isclose(value[i], int(value[i] + 1), rel_tol=epi):
-                value[i] = int(value[i] + 1)
-            elif math.isclose(value[i] + 1, int(value[i] + 1), rel_tol=epi):
-                value[i] = int(value[i] + 1) - 1
-        self._weight = value[0] + value[1] * 1j
+        self._weight = np.round(value, int(-np.log10(epi)))
 
     def node_number(self):
         node_set = set()
@@ -165,6 +157,7 @@ class BDD:
             return self._expr
 
         value = np.round(self.weight, int(-np.log10(epi)))
+        # value = self.weight
 
         if self.node.key == -1:
             return value
@@ -501,17 +494,12 @@ def find_computed_table(item):
             get_int_key(item[1].weight),
             item[1].node,
             get_int_key(item[2].weight),
-            item[2].node,
+            item[2].node
         )
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
-            a = BDD(res[1])
-            a.weight = res[0]
-            b = BDD(res[3])
-            b.weight = res[2]
-            c = BDD(res[5])
-            c.weight = res[4]
-            return [a, b, c]
+
+            return res
     elif item[0] == "r":
         the_key = (
             "r",
@@ -565,14 +553,13 @@ def insert_2_computed_table(item, res):
             get_int_key(item[2].weight),
             item[2].node,
         )
+
         computed_table[the_key] = (
-            res[0].weight,
-            res[0].node,
-            res[1].weight,
-            res[1].node,
-            res[2].weight,
-            res[2].node,
+            BDD(res[0].node, weight=res[0].weight),
+            BDD(res[1].node, weight=res[1].weight),
+            BDD(res[2].node, weight=res[2].weight)
         )
+
     elif item[0] == "r":
         the_key = (
             "r",
@@ -684,24 +671,27 @@ def reduce_degree(bdd, min_degree):
 
 
 def normalize_2_fun(bdd1, bdd2, key_2_new_key):
+    global inverse_global_index_order
     # bdd2/bdd1,the result is like [bdd1,1,bdd2/bdd1]
     if bdd1.weight == 0:
+        print('BDD 690 bdd1=0:',bdd1, bdd1.key_2_index)
         return [bdd2.self_copy(), bdd1, get_one_state()]
-
+    
     if bdd2.weight == 0:
+        print('BDD 694 bdd2=0:',bdd2, bdd2.key_2_index)
         return [bdd1.self_copy(), get_one_state(), bdd2.self_copy()]
 
     if bdd1.node.key == -1:
         temp = bdd2.self_copy()
         temp.weight /= bdd1.weight
+        print('BDD 700 bdd1 is const:',bdd1, bdd1.key_2_index)
         return [bdd1.self_copy(), get_one_state(), temp]
 
     if bdd1.node == bdd2.node:
         temp = get_one_state()
         temp.weight = bdd2.weight / bdd1.weight
+        print('BDD 706 bdd1.node = bdd2.node ',bdd1, bdd1.key_2_index)
         return [bdd1.self_copy(), get_one_state(), temp]
-
-    # return [get_one_state(),bdd1,bdd2]
 
     w1 = bdd1.weight
     w2 = bdd2.weight
@@ -709,8 +699,9 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
     bdd2.weight = 1
 
     res = find_computed_table(["/", bdd1, bdd2])
-
+    
     if res:
+        print('BDD 713 hit / cache')
         a, b, c = res
     else:
 
@@ -739,15 +730,17 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
 
             i = 0
             for key, degree in min_degree_dict.items():
-                is_sin = key % 2 == 1
-                if (i % 2) == 1 ^ is_sin:
+                is_cos = key % 2 == 0
+                if (i % 2) == 0 ^ is_cos:
                     i += 1
                 a = normalize(i, [[degree, 1, a.node]])
-                i += 1
+                print('BDD 748',key, i)
+            
 
         else:
             b = bdd1.self_copy()
             c = bdd2.self_copy()
+
         # TODO: revise abc's key_2_index
 
         a.weight = b.weight
@@ -760,6 +753,7 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
     c.weight *= w2 / w1
     bdd1.weight = w1
     bdd2.weight = w2
+
     return [a, b, c]
 
 
@@ -832,7 +826,7 @@ def cont(mode, bdd1, bdd2):
     var_out1 = set(bdd1.key_2_index.values())
     var_out2 = set(bdd2.key_2_index.values())
     print(
-        "BDD 877",
+        "BDD 877", mode,
         "\n   bdd:",
         bdd1,
         bdd2,
@@ -882,9 +876,9 @@ def cont(mode, bdd1, bdd2):
         bdd = add2(bdd1, bdd2, key_2_new_key)
     elif mode == "norm2fun":
         a, b, c = normalize_2_fun(bdd1, bdd2, key_2_new_key)
-        a.key_2_index = key_2_idx
-        b.key_2_index = key_2_idx
-        c.key_2_index = key_2_idx
+        print ('BDD 891 a, b, c:',a, b, c,
+               '\n key_2_index:', a.key_2_index, b.key_2_index, c.key_2_index)
+        
         return a, b, c
 
     bdd.key_2_index = key_2_idx
@@ -1016,10 +1010,11 @@ def mul2(bdd1, bdd2, key_2_new_key):
                 bdd = normalize(key_2_new_key[1][k2], the_successor)
 
         insert_2_computed_table(["*", bdd1, bdd2, temp_key_2_new_key], bdd)
+        print("BDD 1025", bdd)
     bdd.weight = bdd.weight * weig
     bdd1.weight = w1
     bdd2.weight = w2
-    # print("BDD 1031", bdd)
+    
     return bdd
 
 
