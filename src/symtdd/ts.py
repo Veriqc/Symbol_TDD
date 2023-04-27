@@ -12,9 +12,9 @@ else:
 
 
 class Index:
-    def __init__(self, *args, hypridx=0) -> None:
-        self.key = tuple(args)
-        self.idx = hypridx
+    def __init__(self, *args, idx=0, hypridx=0) -> None:
+        self.key = tuple(args + [idx])
+        self.hypridx = hypridx
 
     def __eq__(self, other) -> Any:
         return self.key == other.key  # and self.idx == other.idx
@@ -23,10 +23,24 @@ class Index:
         return hash(self.key)
 
     def __repr__(self) -> str:
+        """ The hyper index string may exists more than two times. """
         return "_".join(str(x) for x in self.key)
 
     def __str__(self) -> str:
-        return repr(self) + "#" + str(self.idx)
+        """ The index exists no more than two times. """
+        return repr(self) + "#" + str(self.hypridx)
+    
+    def update(self, *args, idx=0, hypridx=0) -> None:
+        self.key = tuple(args + [idx])
+        self.hypridx = hypridx
+
+    def create_next(self) -> Self:
+        """ Create a new Index increasing by 1 from the current. """
+        type(self)(self.key[:-1], self.key[-1] + 1, self.hypridx)
+
+    def create_next_hypr(self) -> Self:
+        """ Create a new Index with hypridx increasing by 1 from the current. """
+        type(self)(self.key[:-1], idx=self.key[-1], hypridx=self.hypridx + 1)
 
 
 class Tensor:
