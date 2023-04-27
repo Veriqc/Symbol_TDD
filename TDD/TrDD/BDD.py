@@ -494,7 +494,8 @@ def find_computed_table(item):
             get_int_key(item[1].weight),
             item[1].node,
             get_int_key(item[2].weight),
-            item[2].node
+            item[2].node,
+            item[3] 
         )
         if computed_table.__contains__(the_key):
             res = computed_table[the_key]
@@ -552,6 +553,7 @@ def insert_2_computed_table(item, res):
             item[1].node,
             get_int_key(item[2].weight),
             item[2].node,
+            item[3]
         )
 
         computed_table[the_key] = (
@@ -670,7 +672,7 @@ def reduce_degree(bdd, min_degree):
     return res
 
 
-def normalize_2_fun(bdd1, bdd2, key_2_new_key):
+def normalize_2_fun(bdd1, bdd2, min_degree_dict, min_degree_dict_local1, min_degree_dict_local2):
     global inverse_global_index_order
     # bdd2/bdd1,the result is like [bdd1,1,bdd2/bdd1]
     if bdd1.weight == 0:
@@ -697,29 +699,15 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
     w2 = bdd2.weight
     bdd1.weight = 1
     bdd2.weight = 1
-
-    res = find_computed_table(["/", bdd1, bdd2])
+    # to hash dict()
+    hash1 = hash(tuple([tuple([k, v]) for k, v in min_degree_dict_local1.items()]))
+    hash2 = hash(tuple([tuple([k, v]) for k, v in min_degree_dict_local2.items()]))
+    res = find_computed_table(["/", bdd1, bdd2, (hash1, hash2)])
     
     if res:
         print('BDD 713 hit / cache')
         a, b, c = res
     else:
-
-        node1_index_degree = {key_2_new_key[0][k]:(k, v) for k, v in bdd1.node.index_degree.items()}
-        node2_index_degree = {key_2_new_key[1][k]:(k, v) for k, v in bdd2.node.index_degree.items()}
-
-        min_degree_dict = dict()
-        min_degree_dict_local1 = dict()
-        min_degree_dict_local2 = dict()
-
-        for key in node1_index_degree:
-            if key in node2_index_degree:
-                if (min_degree := min(node1_index_degree[key][1], node2_index_degree[key][1])) > 0:
-                    min_degree_dict[key] = min_degree
-                    local_key1 = node1_index_degree[key][0]
-                    local_key2 = node2_index_degree[key][0]
-                    min_degree_dict_local1[local_key1] = min_degree
-                    min_degree_dict_local2[local_key2] = min_degree
 
         print("BDD 789 min_degree", min_degree_dict)
         a = get_one_state()
@@ -746,8 +734,8 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
         a.weight = b.weight
         b.weight = 1
         c.weight /= a.weight
-
-        insert_2_computed_table(["/", bdd1, bdd2], [a, b, c])
+        
+        insert_2_computed_table(["/", bdd1, bdd2, (hash1, hash2)], [a, b, c])
 
     a.weight *= w1
     c.weight *= w2 / w1
@@ -875,7 +863,30 @@ def cont(mode, bdd1, bdd2):
     elif mode == "add":
         bdd = add2(bdd1, bdd2, key_2_new_key)
     elif mode == "norm2fun":
-        a, b, c = normalize_2_fun(bdd1, bdd2, key_2_new_key)
+
+        node1_index_degree = {key_2_new_key[0][k]:(k, v) for k, v in bdd1.node.index_degree.items()}
+        node2_index_degree = {key_2_new_key[1][k]:(k, v) for k, v in bdd2.node.index_degree.items()}
+
+        min_degree_dict = dict()
+        min_degree_dict_local1 = dict()
+        min_degree_dict_local2 = dict()
+
+        for key in node1_index_degree:
+            if key in node2_index_degree:
+                if (min_degree := min(node1_index_degree[key][1], node2_index_degree[key][1])) > 0:
+                    min_degree_dict[key] = min_degree
+                    local_key1 = node1_index_degree[key][0]
+                    local_key2 = node2_index_degree[key][0]
+                    min_degree_dict_local1[local_key1] = min_degree
+                    min_degree_dict_local2[local_key2] = min_degree
+
+        a, b, c = normalize_2_fun(bdd1, bdd2, min_degree_dict,min_degree_dict_local1,min_degree_dict_local2)
+
+        # from min_degree_dict to set a key_2_index (not yet)
+        a.key_2_index = key_2_idx 
+        b.key_2_index = bdd1.key_2_index
+        c.key_2_index = bdd2.key_2_index
+        
         print ('BDD 891 a, b, c:',a, b, c,
                '\n key_2_index:', a.key_2_index, b.key_2_index, c.key_2_index)
         
