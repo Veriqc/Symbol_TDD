@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import logging
 from typing import Any
 
 import numpy as np
@@ -11,9 +12,14 @@ else:
     from typing_extensions import Self
 
 
+logging.basicConfig()
+ts_logger = logging.getLogger('ts')
+ts_logger.setLevel("DEBUG")
+
+
 class Index:
     def __init__(self, *args, idx=0, hypridx=0) -> None:
-        self.key = tuple(args + [idx])
+        self.key = args + (idx,)
         self.hypridx = hypridx
 
     def __eq__(self, other) -> Any:
@@ -31,16 +37,19 @@ class Index:
         return repr(self) + "#" + str(self.hypridx)
     
     def update(self, *args, idx=0, hypridx=0) -> None:
-        self.key = tuple(args + [idx])
+        self.key = args + (idx,)
         self.hypridx = hypridx
 
-    def create_next(self) -> Self:
+    def create_next(self, with_hypridx=False) -> Self:
         """ Create a new Index increasing by 1 from the current. """
-        type(self)(self.key[:-1], self.key[-1] + 1, self.hypridx)
-
-    def create_next_hypr(self) -> Self:
-        """ Create a new Index with hypridx increasing by 1 from the current. """
-        type(self)(self.key[:-1], idx=self.key[-1], hypridx=self.hypridx + 1)
+        pre_args = self.key[:-1]
+        idx, hypridx = self.key[-1], self.hypridx
+        if with_hypridx:
+            hypridx += 1
+        else:
+            idx += 1
+        new_index = type(self)(*pre_args, idx=idx, hypridx=hypridx)
+        return new_index
 
 
 class Tensor:
@@ -58,6 +67,7 @@ class Tensor:
         return [repr(index) for index in self.indices]
 
     def contract(self, other:Self) -> Self:
+        # BUG: python set does not preserve insertion order
         self_indices_set = set(self.indices)
         other_indices_set = set(other.indices)
         union_indices = self_indices_set.union(other_indices_set)
@@ -72,6 +82,9 @@ class Tensor:
         new_data = np.einsum(
             *get_data_int_pair(self), *get_data_int_pair(other), out_int_indices
         )
+
+        ts_logger.debug("%s,%s->%s", get_data_int_pair(self)[1], get_data_int_pair(other)[1], out_int_indices)
+
         return type(self)(new_data, tuple(out_indices))
 
     def tdd(self) -> None:
