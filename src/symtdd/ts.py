@@ -12,29 +12,43 @@ else:
     from typing_extensions import Self
 
 
-logging.basicConfig()
-ts_logger = logging.getLogger('ts')
-ts_logger.setLevel("DEBUG")
+log = logging.getLogger(__name__)
+log.setLevel("DEBUG")
 
 
 class Index:
+    """
+    Though here we implement hyper indices storage,
+    the indices we compare (__eq__, __lt__) and represent(__repr__, __str__)
+    should still be with standard. (Each index exists no more than two times.)
+    """
     def __init__(self, *args, idx=0, hypridx=0) -> None:
         self.key = args + (idx,)
         self.hypridx = hypridx
 
     def __eq__(self, other) -> Any:
-        return self.key == other.key  # and self.idx == other.idx
+        return self.key == other.key and self.hypridx == other.hypridx
+    
+    def __lt__(self, other) -> bool:
+        for a, b in zip(self.key, other.key):
+            if a < b:
+                return True
+            elif a > b:
+                return False
+        return self.hypridx < other.hypridx
 
     def __hash__(self) -> int:
         return hash(self.key)
 
     def __repr__(self) -> str:
-        """ The hyper index string may exists more than two times. """
-        return "_".join(str(x) for x in self.key)
+        return self._str + "#" + str(self.hypridx)
 
     def __str__(self) -> str:
-        """ The index exists no more than two times. """
-        return repr(self) + "#" + str(self.hypridx)
+        return self._str + "_" + str(self.hypridx)
+    
+    @property
+    def _str(self) -> str:
+        return "_".join(str(x) for x in self.key)
     
     def update(self, *args, idx=0, hypridx=0) -> None:
         self.key = args + (idx,)
@@ -58,6 +72,9 @@ class Tensor:
         self.indices = indices
         self.name = name
 
+    def __str__(self) -> str:
+        return f"TS {self.name}: shape {self.data.shape}, indices {self.str_hyprindices}"
+
     @property
     def str_indices(self) -> list[str]:
         return [str(index) for index in self.indices]
@@ -67,7 +84,6 @@ class Tensor:
         return [repr(index) for index in self.indices]
 
     def contract(self, other:Self) -> Self:
-        # BUG: python set does not preserve insertion order
         self_indices_set = set(self.indices)
         other_indices_set = set(other.indices)
         union_indices = self_indices_set.union(other_indices_set)
@@ -76,16 +92,30 @@ class Tensor:
         idx_2_int = {v: i for i, v in enumerate(union_indices)}
         out_int_indices = tuple(map(idx_2_int.get, out_indices))
 
-        def get_data_int_pair(x):
-            return (x.data, tuple(map(idx_2_int.get, x.indices)))
+        log.debug("====Contract\nmap: %s", idx_2_int)
+
+        def get_data_ints_pair(x):
+            y = tuple(map(idx_2_int.get, x.indices))
+            log.debug("\ninput: %s\noutput: %s", x, y)
+            return (x.data, y)
+        
+        self_di_pair = get_data_ints_pair(self)
+        other_di_pair = get_data_ints_pair(other)
 
         new_data = np.einsum(
-            *get_data_int_pair(self), *get_data_int_pair(other), out_int_indices
+            *self_di_pair, *other_di_pair, out_int_indices
         )
 
-        ts_logger.debug("%s,%s->%s", get_data_int_pair(self)[1], get_data_int_pair(other)[1], out_int_indices)
+        log.debug("%s,%s->%s", self_di_pair[1], other_di_pair[1], out_int_indices)
+        # log.debug("data: %s", new_data)
+        log.debug("Contract End====")
 
         return type(self)(new_data, tuple(out_indices))
+    
+    def sort(self) -> None:
+        sort_idxs = np.argsort(self.indices)
+        self.data = np.moveaxis(self.data, sort_idxs, np.arange(self.data.ndim))
+        self.indices = tuple(self.indices[idx] for idx in sort_idxs)
 
     def tdd(self) -> None:
         pass

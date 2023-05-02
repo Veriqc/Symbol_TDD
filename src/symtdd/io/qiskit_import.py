@@ -6,14 +6,20 @@ import qiskit.circuit.library as GateLib
 import numpy as np
 
 from collections.abc import Callable
+import logging
 
 from .. import DDType, Tensor, Index, TensorNetwork
+
+
+log = logging.getLogger(__name__)
+log.setLevel("DEBUG")
 
 Diagonal_Gates = set([GateLib.HGate, GateLib.IGate, GateLib.PhaseGate,
                       GateLib.RZGate, GateLib.RZZGate, GateLib.SGate, GateLib.SdgGate,
                       GateLib.TGate, GateLib.TdgGate, GateLib.U1Gate, GateLib.ZGate])
 
 Diagonal_Gate_Names = {gate.name for gate in Diagonal_Gates}
+
 
 def gate_2_data_direct(gate: Gate) -> np.ndarray:
     """
@@ -27,6 +33,7 @@ def gate_2_data_direct(gate: Gate) -> np.ndarray:
     return data
 
     # is_diagonal = np.count_nonzero(data - np.diag(np.diag(data))) != 0
+
 
 def instr_2_tensor(gate2data_func: Callable[[Gate], np.ndarray], instr: CircuitInstruction, current_indices: list[Index], cir_qubits: list) -> Tensor:
     """ Create new tensor from the given instruction and update current indices. """
@@ -47,7 +54,12 @@ def instr_2_tensor(gate2data_func: Callable[[Gate], np.ndarray], instr: CircuitI
     for i, q in enumerate(qubit_idx_list):
         current_indices[q] = output_indices[i]
 
-    return Tensor(data, indices, gate.name)
+    new_tensor = Tensor(data, indices, gate.name)
+
+    log.debug("instr:%s(%s)", gate.name, ",".join([str(q) for q in qubit_idx_list]))
+    log.debug(" => tensor: shape %s, indices %s", data.shape, str(indices))
+    # log.debug(" => %s", data)
+    return new_tensor
 
 
 def cir_2_tn(cir:QuantumCircuit, ddtype:DDType) -> TensorNetwork:
@@ -63,7 +75,7 @@ def cir_2_tn(cir:QuantumCircuit, ddtype:DDType) -> TensorNetwork:
         raise ValueError("Not implemented")
     else:
         zero_state = np.array([1, 0])
-        init_tensors = [Tensor(zero_state, [index]) for index in current_indices]
+        init_tensors = [Tensor(zero_state, (index,)) for index in current_indices]
 
     # Transform qiskit instructions to tensors
     if ddtype is DDType.STDD:
@@ -81,4 +93,8 @@ def cir_2_tn(cir:QuantumCircuit, ddtype:DDType) -> TensorNetwork:
     for q, index in enumerate(current_indices):
         index.update('y', q)
     
-    return TensorNetwork(init_tensors + tensors)
+    total_tensors = init_tensors + tensors
+    log.debug("new TN:")
+    for tensor in total_tensors:
+        log.debug("%s", str(tensor))
+    return TensorNetwork(total_tensors)
