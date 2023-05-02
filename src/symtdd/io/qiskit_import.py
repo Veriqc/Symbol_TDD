@@ -26,7 +26,19 @@ def gate_2_data_direct(gate: Gate) -> np.ndarray:
     qiskit gate U_yx reshape to tensor T_yn...y1xn...x1
     ours tensor should be T_x1y1x2y2...xnyn
     """
-    data = gate.to_matrix().reshape((2,) * (2 * gate.num_qubits))
+    try:
+        data = gate.to_matrix().reshape((2,) * (2 * gate.num_qubits))
+    except:
+        # TODO: support qiskit ctrl_state for cases other than full of ones 11...11
+        assert isinstance(gate, ControlledGate)
+        from scipy.linalg import block_diag
+        A = gate.base_gate.to_matrix()
+        I = np.eye(*A.shape)
+        data = block_diag(*([I] * (2 ** gate.num_ctrl_qubits - 1) + [A]))
+        data = data.reshape((2,) * (2 * gate.num_qubits))
+        y_p, x_p = np.arange(gate.num_qubits), np.arange(gate.num_qubits, 2 * gate.num_qubits)
+        data = np.moveaxis(data, np.hstack((y_p, x_p)), np.hstack((y_p[::-1], x_p[::-1])))
+
     xpos = np.arange(data.ndim // 2)[::-1] * 2
     ypos = xpos + 1
     data = np.moveaxis(data, np.arange(data.ndim), np.hstack((ypos, xpos)))
@@ -41,7 +53,7 @@ def instr_2_tensor(gate2data_func: Callable[[Gate], np.ndarray], instr: CircuitI
     data = gate2data_func(gate)
 
     if isinstance(gate, ControlledGate):
-        need_hypridx_list = [True] * gate.num_ctrl_qubits + [gate.base_gate.name in Diagonal_Gate_Names]
+        need_hypridx_list = [True] * gate.num_ctrl_qubits + [gate.base_gate.name in Diagonal_Gate_Names] * (gate.num_qubits - gate.num_ctrl_qubits)
     else:
         need_hypridx_list = [gate.name in Diagonal_Gate_Names] * gate.num_qubits
 

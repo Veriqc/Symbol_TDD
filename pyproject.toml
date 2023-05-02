@@ -41,7 +41,6 @@ include = '\.pyi?$'
 [tool.pytest.ini_options]
 addopts = """\
     --cov symtdd \
-    --cov tests \
     --cov-report term-missing \
     --no-cov-on-fail \
 """
