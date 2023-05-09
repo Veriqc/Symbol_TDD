@@ -5,10 +5,11 @@ from qiskit.circuit.controlledgate import ControlledGate
 import qiskit.circuit.library as GateLib
 import numpy as np
 
+from collections import Counter
 from collections.abc import Callable
 import logging
 
-from .. import DDType, Tensor, Index, TensorNetwork
+from .. import Tensor, Index, HyperIndex, TensorNetwork, IndexType, TensorType, TDDWeightType
 
 
 log = logging.getLogger(__name__)
@@ -74,30 +75,30 @@ def instr_2_tensor(gate2data_func: Callable[[Gate], np.ndarray], instr: CircuitI
     return new_tensor
 
 
-def cir_2_tn(cir:QuantumCircuit, ddtype:DDType) -> TensorNetwork:
-    if isPQC := (len(cir.parameters) != 0): # PQC: parameterized quantum circuit
-        if (ddtype is DDType.TDD) or (ddtype is DDType.STDD):
-            raise ValueError(f"{ddtype} does not support representing PQC.")
+def cir_2_tn(cir:QuantumCircuit, idxtype:IndexType, tstype:TensorType, wtype:TDDWeightType=TDDWeightType.NA) -> TensorNetwork:
+    if (tstype is TensorType.TENSOR) and (wtype is not TDDWeightType.NA):
+        raise ValueError(f"Must use TDDWeightType.NA instead of {wtype} under {tstype}.")
+    elif (tstype is not TensorType.TENSOR) and (wtype is TDDWeightType.NA):
+        raise ValueError(f"Must use something other than TDDWeightType.NA under {tstype}.")
+    elif isPQC := (len(cir.parameters) != 0): # PQC: parameterized quantum circuit
+        if (wtype is not TDDWeightType.TrDD) and (wtype is not TDDWeightType.ExpDD):
+            raise ValueError(f"{wtype} does not support representing PQC.")
 
     num_q = cir.num_qubits
     current_indices = [Index('x', q) for q in range(num_q)]
 
     # Construct initial state tensors
-    if ddtype is DDType.STDD:
+    if wtype is TDDWeightType.SymDD:
         raise ValueError("Not implemented")
     else:
         zero_state = np.array([1, 0])
         init_tensors = [Tensor(zero_state, (index,)) for index in current_indices]
 
     # Transform qiskit instructions to tensors
-    if ddtype is DDType.STDD:
-        raise ValueError("Not implemented")
-    elif ddtype is DDType.TrTDD:
-        raise ValueError("Not implemented")
-    elif ddtype is DDType.ExpTDD:
-        raise ValueError("Not implemented")
-    else:
+    if wtype is TDDWeightType.NA:
         gate2data_func = gate_2_data_direct
+    else:
+        raise ValueError("Not implemented")
 
     tensors = [instr_2_tensor(gate2data_func, instr, current_indices, cir.qubits) for instr in cir.data]
 
@@ -106,7 +107,21 @@ def cir_2_tn(cir:QuantumCircuit, ddtype:DDType) -> TensorNetwork:
         index.update('y', q)
     
     total_tensors = init_tensors + tensors
+
+    if idxtype is IndexType.HYPEREDGE:
+        # This will affect index_set behavior since __eq__ in index is different.
+        for tensor in total_tensors:
+            tensor.indices = tuple([HyperIndex(index) for index in tensor.indices])
+
+    # Create index counter and turn all indice into indirect form (store global order).
+    index_counter = Counter([index for tensor in total_tensors for index in tensor.indices])
+    indice_in_order = sorted(list(index_counter))
+    order_counts = [index_counter[index] for index in indice_in_order]
+    index_order_dict = {v:i for i, v in enumerate(indice_in_order)}
+    for tensor in total_tensors:
+        tensor.indices = tuple([index_order_dict[index] for index in tensor.indices])
+
     log.debug("new TN:")
     for tensor in total_tensors:
         log.debug("%s", str(tensor))
-    return TensorNetwork(total_tensors)
+    return TensorNetwork(total_tensors, indice_in_order, order_counts)

@@ -6,7 +6,7 @@ from qiskit import transpile
 import numpy as np
 
 from symtdd.io.qiskit_import import cir_2_tn
-from symtdd import DDType
+from symtdd import IndexType, TensorType, TDDWeightType
 
 
 def test_null() -> None:
@@ -27,7 +27,16 @@ class TestTN(unittest.TestCase):
         return super().setUp()
     
     def test_ts(self) -> None:
-        tn = cir_2_tn(self.cir, DDType.TS)
+        tn = cir_2_tn(self.cir, IndexType.STANDARD, TensorType.TENSOR)
+        ts = tn.contract()
+        ts.sort()
+        data = ts.data
+        orders = np.arange(data.ndim)
+        data_qiskit_order = np.moveaxis(data, orders, orders[::-1])
+        self.assertTrue(np.allclose(self.gold_data, data_qiskit_order.flatten()))
+
+    def test_ts_hyper(self) -> None:
+        tn = cir_2_tn(self.cir, IndexType.HYPEREDGE, TensorType.TENSOR)
         ts = tn.contract()
         ts.sort()
         data = ts.data

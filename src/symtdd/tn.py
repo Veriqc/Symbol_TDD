@@ -13,8 +13,10 @@ from .ts import Tensor
 
 
 class TensorNetwork:
-    def __init__(self, tensors=[]) -> None:
+    def __init__(self, tensors=[], indice_in_order=None, order_counts=None) -> None:
         self.tensors = tensors
+        self.indice_in_order = indice_in_order
+        self.order_counts = order_counts
 
     def contract(self, optimizer=None) -> Any:
         assert len(self.tensors) > 1
@@ -35,7 +37,7 @@ class TensorNetwork:
 
         for pos_pair in path:
             ts_pair = tuple(tensors[pos] for pos in pos_pair)
-            new_ts = ts_pair[0].contract(ts_pair[1])
+            new_ts = ts_pair[0].contract(ts_pair[1], self.order_counts)
 
             self.record(new_ts)
 

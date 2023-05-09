@@ -1,9 +1,19 @@
 from enum import Enum, auto
 
 
-class DDType(Enum):
-    TS = auto() # Tensornetwork with tensors
+class IndexType(Enum):
+    STANDARD = auto()
+    HYPEREDGE = auto()
+
+
+class TensorType(Enum):
+    TENSOR = auto()
     TDD = auto()
-    STDD = auto()
-    TrTDD = auto()
-    ExpTDD = auto()
+
+
+class TDDWeightType(Enum):
+    NA = auto()
+    COMPLEX = auto()
+    SymDD = auto()
+    TrDD = auto()
+    ExpDD = auto()

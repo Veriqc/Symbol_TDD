@@ -3,8 +3,10 @@ from __future__ import annotations
 import sys
 import logging
 from typing import Any
+from collections import Counter
 
 import numpy as np
+# import opt_einsum as oe
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -64,6 +66,23 @@ class Index:
             idx += 1
         new_index = type(self)(*pre_args, idx=idx, hypridx=hypridx)
         return new_index
+    
+
+class HyperIndex(Index):
+    __hash__ = Index.__hash__
+
+    def __init__(self, index:Index) -> None:
+        self.key = index.key
+        self.hypridx = index.hypridx
+
+    def __eq__(self, other) -> Any:
+        return self.key == other.key
+
+    def __repr__(self) -> str:
+        return self._str
+
+    def __str__(self) -> str:
+        return self._str
 
 
 class Tensor:
@@ -83,15 +102,32 @@ class Tensor:
     def str_hyprindices(self) -> list[str]:
         return [repr(index) for index in self.indices]
 
-    def contract(self, other:Self) -> Self:
+    def contract(self, other:Self, order_counts: list[int]) -> Self:
+        log.debug("order counter: %s", order_counts)
+        # Since we use indirect index, indice here are integers (global orders).
+
+        self_counter = Counter(self.indices)
+        other_counter = Counter(other.indices)
+
         self_indices_set = set(self.indices)
         other_indices_set = set(other.indices)
-        union_indices = self_indices_set.union(other_indices_set)
+        intersect_indices = self_indices_set.intersection(other_indices_set)
         out_indices = self_indices_set.symmetric_difference(other_indices_set)
+        for index in intersect_indices:
+            count = self_counter[index] + other_counter[index]
+            if count != order_counts[index]:
+                out_indices.add(index)
+                count -= 1
+            order_counts[index] -= count
 
+        # out_int_indices = out_indices
+        # We still use idx_2_int to avoid number limit of indice from either numpy or opt_einsum
+
+        union_indices = self_indices_set.union(other_indices_set)
         idx_2_int = {v: i for i, v in enumerate(union_indices)}
         out_int_indices = tuple(map(idx_2_int.get, out_indices))
 
+        # log.debug("====Contract")
         log.debug("====Contract\nmap: %s", idx_2_int)
 
         def get_data_ints_pair(x):
@@ -99,9 +135,14 @@ class Tensor:
             log.debug("\ninput: %s\noutput: %s", x, y)
             return (x.data, y)
         
+        # self_di_pair = (self.data, self.indices)
+        # other_di_pair = (other.data, other.indices)
         self_di_pair = get_data_ints_pair(self)
         other_di_pair = get_data_ints_pair(other)
 
+        # new_data = oe.contract(
+        #     *self_di_pair, *other_di_pair, out_int_indices
+        # )
         new_data = np.einsum(
             *self_di_pair, *other_di_pair, out_int_indices
         )
