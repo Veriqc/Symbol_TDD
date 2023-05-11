@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import math
 import sys
-from collections import Counter
 from typing import Any
 
 if sys.version_info >= (3, 11):
@@ -11,6 +9,7 @@ else:
     from typing_extensions import Self
 
 from .ts import Tensor
+from .utils.basic import reduce_add
 
 
 class TensorNetwork:
@@ -37,7 +36,7 @@ class TensorNetwork:
         self.reset_record()
 
         tensors = self.tensors
-        index_counter = Counter([index for tensor in tensors for index in tensor.indices]) if self.usehyper else None
+        index_counter = reduce_add([tensor.index_counter for tensor in tensors]) if self.usehyper else None
 
         for pos_pair in path:
             ts_pair = tuple(tensors[pos] for pos in pos_pair)
@@ -57,5 +56,4 @@ class TensorNetwork:
         self.max_size = 0
 
     def record(self, tensor) -> None:
-        ts_size = math.prod(tensor.data.shape)
-        self.max_size = max(ts_size, self.max_size)
+        self.max_size = max(tensor.size, self.max_size)

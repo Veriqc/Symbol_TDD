@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import logging
 from typing import Any
+import math
 from collections import Counter
 
 import numpy as np
@@ -102,33 +103,25 @@ class Tensor:
     def str_hyprindices(self) -> list[str]:
         return [repr(index) for index in self.indices]
 
-    def contract(self, other: Self, index_counter: Counter | dict[HyperIndex, int]=None) -> Self:
-        self_indices_set = set(self.indices)
-        other_indices_set = set(other.indices)
-        intersect_indices = self_indices_set.intersection(other_indices_set)
-        out_indices = self_indices_set.symmetric_difference(other_indices_set)
+    @property
+    def size(self) -> int:
+        return math.prod(self.data.shape)
 
-        if index_counter is not None:
-            # Handle hyperindex contraction
-            # log.debug("global index counter: %s", index_counter)
-            self_counter = Counter(self.indices)
-            other_counter = Counter(other.indices)
-            for index in intersect_indices:
-                count = self_counter[index] + other_counter[index]
-                if count != index_counter[index]:
-                    out_indices.add(index)
-                    count -= 1
-                index_counter[index] -= count
+    @property
+    def index_set(self) -> Counter:
+        return set(self.indices)
 
+    @property
+    def index_counter(self) -> Counter:
+        return Counter(self.indices)
+    
+    @classmethod
+    def contract_inner(cls, ts1, ts2, out_indices, intersect_indices, union_indices):
         # out_int_indices = out_indices
         # We still use idx_2_int to avoid number limit of indice from either numpy or opt_einsum
-
-        union_indices = self_indices_set.union(other_indices_set)
+        
         idx_2_int = {v: i for i, v in enumerate(union_indices)}
         out_int_indices = tuple(map(idx_2_int.get, out_indices))
-
-        # log.debug("====Contract")
-        log.debug("====Contract\nmap: %s", idx_2_int)
 
         def get_data_ints_pair(x):
             y = tuple(map(idx_2_int.get, x.indices))
@@ -137,8 +130,8 @@ class Tensor:
         
         # self_di_pair = (self.data, self.indices)
         # other_di_pair = (other.data, other.indices)
-        self_di_pair = get_data_ints_pair(self)
-        other_di_pair = get_data_ints_pair(other)
+        self_di_pair = get_data_ints_pair(ts1)
+        other_di_pair = get_data_ints_pair(ts2)
 
         # new_data = oe.contract(
         #     *self_di_pair, *other_di_pair, out_int_indices
@@ -147,12 +140,41 @@ class Tensor:
             *self_di_pair, *other_di_pair, out_int_indices
         )
 
-        log.debug("%s,%s->%s", self_di_pair[1], other_di_pair[1], out_int_indices)
         # log.debug("data: %s", new_data)
         log.debug("data shape: %s", new_data.shape)
+
+        return cls(new_data, tuple(out_indices))
+
+    def contract(self, other: Self, index_counter: Counter | dict[HyperIndex, int]=None) -> Self:
+        self_indices_set = self.index_set
+        other_indices_set = other.index_set
+
+        intersect_indices = self_indices_set.intersection(other_indices_set)
+        union_indices = self_indices_set.union(other_indices_set)
+
+        out_indices = self_indices_set.symmetric_difference(other_indices_set) # = union - intersect
+
+        if index_counter is not None:
+            # Handle hyperindex contraction
+            # log.debug("global index counter: %s", index_counter)
+            self_counter = self.index_counter
+            other_counter = other.index_counter
+            for index in intersect_indices:
+                count = self_counter[index] + other_counter[index]
+                if count != index_counter[index]:
+                    out_indices.add(index)
+                    count -= 1
+                index_counter[index] -= count
+
+        # Warn: out_indices is a set and is in arbitary order!
+        log.debug("====Contract")
+        log.debug("%s,%s->%s", self.indices, other.indices, out_indices)
+
+        tensor = self.contract_inner(self, other, out_indices, intersect_indices, union_indices)
+
         log.debug("Contract End====")
 
-        return type(self)(new_data, tuple(out_indices))
+        return tensor
     
     def sort(self) -> None:
         sort_idxs = np.argsort(self.indices)
