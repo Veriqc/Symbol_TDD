@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import logging
 from typing import Any
 import math
@@ -9,17 +8,15 @@ from collections import Counter
 import numpy as np
 # import opt_einsum as oe
 
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+from . import Self
+from .base import IndexBase
 
 
 log = logging.getLogger(__name__)
 log.setLevel("DEBUG")
 
 
-class Index:
+class Index(IndexBase):
     """
     Though here we implement hyper indices storage,
     the indices we compare (__eq__, __lt__) and represent(__repr__, __str__)
@@ -87,7 +84,7 @@ class HyperIndex(Index):
 
 
 class Tensor:
-    def __init__(self, data=[], indices=(), name=None) -> None:
+    def __init__(self, data=(), indices=(), name=None) -> None:
         self.data = data
         self.indices = indices
         self.name = name

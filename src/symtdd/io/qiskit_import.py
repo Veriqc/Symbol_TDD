@@ -9,7 +9,7 @@ import numpy as np
 from collections.abc import Callable
 import logging
 
-from .. import Tensor, Index, HyperIndex, TensorNetwork, IndexType, TensorType, TDDWeightType
+from .. import Tensor, TDD, Index, HyperIndex, TensorNetwork, IndexType, TensorType, TDDWeightType
 
 
 log = logging.getLogger(__name__)
@@ -112,6 +112,9 @@ def cir_2_tn(cir:QuantumCircuit, idxtype:IndexType, tstype:TensorType, wtype:TDD
         # This will affect index_set behavior since __eq__ in index is different.
         for tensor in total_tensors:
             tensor.indices = tuple([HyperIndex(index) for index in tensor.indices])
+
+    if tstype is TensorType.TDD:
+        total_tensors = [TDD.from_tensor(tensor, wtype) for tensor in total_tensors]
 
     log.debug("new TN:")
     for tensor in total_tensors:
