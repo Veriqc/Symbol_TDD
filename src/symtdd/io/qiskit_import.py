@@ -5,7 +5,7 @@ from qiskit.circuit.controlledgate import ControlledGate
 import qiskit.circuit.library as GateLib
 import numpy as np
 
-from collections import Counter
+# from collections import Counter
 from collections.abc import Callable
 import logging
 
@@ -113,15 +113,7 @@ def cir_2_tn(cir:QuantumCircuit, idxtype:IndexType, tstype:TensorType, wtype:TDD
         for tensor in total_tensors:
             tensor.indices = tuple([HyperIndex(index) for index in tensor.indices])
 
-    # Create index counter and turn all indice into indirect form (store global order).
-    index_counter = Counter([index for tensor in total_tensors for index in tensor.indices])
-    indice_in_order = sorted(list(index_counter))
-    order_counts = [index_counter[index] for index in indice_in_order]
-    index_order_dict = {v:i for i, v in enumerate(indice_in_order)}
-    for tensor in total_tensors:
-        tensor.indices = tuple([index_order_dict[index] for index in tensor.indices])
-
     log.debug("new TN:")
     for tensor in total_tensors:
         log.debug("%s", str(tensor))
-    return TensorNetwork(total_tensors, indice_in_order, order_counts)
+    return TensorNetwork(total_tensors, usehyper=idxtype is IndexType.HYPEREDGE)

@@ -102,23 +102,23 @@ class Tensor:
     def str_hyprindices(self) -> list[str]:
         return [repr(index) for index in self.indices]
 
-    def contract(self, other:Self, order_counts: list[int]) -> Self:
-        log.debug("order counter: %s", order_counts)
-        # Since we use indirect index, indice here are integers (global orders).
-
-        self_counter = Counter(self.indices)
-        other_counter = Counter(other.indices)
-
+    def contract(self, other: Self, index_counter: Counter | dict[HyperIndex, int]=None) -> Self:
         self_indices_set = set(self.indices)
         other_indices_set = set(other.indices)
         intersect_indices = self_indices_set.intersection(other_indices_set)
         out_indices = self_indices_set.symmetric_difference(other_indices_set)
-        for index in intersect_indices:
-            count = self_counter[index] + other_counter[index]
-            if count != order_counts[index]:
-                out_indices.add(index)
-                count -= 1
-            order_counts[index] -= count
+
+        if index_counter is not None:
+            # Handle hyperindex contraction
+            # log.debug("global index counter: %s", index_counter)
+            self_counter = Counter(self.indices)
+            other_counter = Counter(other.indices)
+            for index in intersect_indices:
+                count = self_counter[index] + other_counter[index]
+                if count != index_counter[index]:
+                    out_indices.add(index)
+                    count -= 1
+                index_counter[index] -= count
 
         # out_int_indices = out_indices
         # We still use idx_2_int to avoid number limit of indice from either numpy or opt_einsum
@@ -149,6 +149,7 @@ class Tensor:
 
         log.debug("%s,%s->%s", self_di_pair[1], other_di_pair[1], out_int_indices)
         # log.debug("data: %s", new_data)
+        log.debug("data shape: %s", new_data.shape)
         log.debug("Contract End====")
 
         return type(self)(new_data, tuple(out_indices))

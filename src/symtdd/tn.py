@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import sys
+from collections import Counter
 from typing import Any
 
 if sys.version_info >= (3, 11):
@@ -13,10 +14,12 @@ from .ts import Tensor
 
 
 class TensorNetwork:
-    def __init__(self, tensors=[], indice_in_order=None, order_counts=None) -> None:
+    def __init__(self, tensors=(), usehyper=False) -> None:
+        """
+        usehyper: determine if tn should contract by hyperindice (each index exists more than two times)
+        """
         self.tensors = tensors
-        self.indice_in_order = indice_in_order
-        self.order_counts = order_counts
+        self.usehyper = usehyper
 
     def contract(self, optimizer=None) -> Any:
         assert len(self.tensors) > 1
@@ -34,10 +37,11 @@ class TensorNetwork:
         self.reset_record()
 
         tensors = self.tensors
+        index_counter = Counter([index for tensor in tensors for index in tensor.indices]) if self.usehyper else None
 
         for pos_pair in path:
             ts_pair = tuple(tensors[pos] for pos in pos_pair)
-            new_ts = ts_pair[0].contract(ts_pair[1], self.order_counts)
+            new_ts = ts_pair[0].contract(ts_pair[1], index_counter)
 
             self.record(new_ts)
 
