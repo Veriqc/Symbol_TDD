@@ -61,8 +61,10 @@ class Node:
             # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
             numbers = re.findall("\d+", s)
             return int(numbers[0])
-
+        
+        print ('BDD 64',self.key)
         param_expr = key_2_index[self.key]
+        print ('BDD 66',  param_expr)
         sym_str = (
             param_expr.replace("sin(", "")
             .replace("cos(", "")
@@ -85,11 +87,11 @@ class Node:
 
 
 class BDD:
-    def __init__(self, node, weight=1 + 0j, key_2_index={-1: -1}):
+    def __init__(self, node, weight=1 + 0j, key_2_index = None):
         """BDD"""
         self._weight = weight
         self._expr = None
-        self.key_2_index = key_2_index
+        self.key_2_index = key_2_index if key_2_index is not None else {-1:-1}
 
         self.node = node if isinstance(node, Node) else Node(node)
 
@@ -174,7 +176,9 @@ class BDD:
         res = get_value_node2(self.node, val)
         return self.weight * res
 
-    def get_key_2_index_subdict(self, top_node, subdict=dict()):
+    def get_key_2_index_subdict(self, top_node, subdict = None):
+        if subdict is None:
+            subdict = dict()
         if top_node.key >= 0:
             cos_key = (top_node.key // 2) * 2
             sin_key = cos_key + 1
@@ -544,7 +548,7 @@ def insert_2_computed_table(item, res):
             item[3][0],
             item[3][1],
         )
-        print("BDD 469", res, the_key)
+        # print("BDD 469", res, the_key)
         computed_table[the_key] = (res.weight, res.node)
     elif item[0] == "/":
         the_key = (
@@ -938,6 +942,7 @@ def mul2(bdd1, bdd2, key_2_new_key):
     if k1 == k2 == -1:
         term = Find_Or_Add_Unique_table(-1)
         weig = 0 if get_int_key(weig) == (0, 0) else weig
+        print("BDD 930", weig)
         return BDD(term, weight=weig)
 
     if k1 == -1:
@@ -998,36 +1003,39 @@ def mul2(bdd1, bdd2, key_2_new_key):
                                 ]
                                 temp_res1 = normalize(k1 - 1, succs)
                                 temp_res1.weight = -1 * temp_res1.weight
-                                print("BDD 1025", temp_res1)
+                                # print("BDD 1025", temp_res1)
                             else:
                                 print(2)
                                 temp_res1 = normalize(
                                     k1 - 1, [[2, temp_res.weight, temp_res.node]]
                                 )
                                 temp_res1.weight = -1 * temp_res1.weight
-                                print("BDD 1029", temp_res1)
+                                # print("BDD 1029", temp_res1)
                             print(3)
                             temp_key_2_new_key2 = [
-                                list(range(temp_res.node.key)),
-                                list(range(temp_res1.node.key)),
+                                # odd -> len +1 even -> len +2
+                                list(range((temp_res.node.key//2)*2+2)),
+                                list(range((temp_res1.node.key//2)*2+2))
                             ]
                             temp_key_2_new_key2[0].append(-1)
                             temp_key_2_new_key2[1].append(-1)
                             print("BDD 1035 temp_key_2_new_key", temp_key_2_new_key2)
                             temp_res = add2(temp_res, temp_res1, temp_key_2_new_key2)
-                            print("BDD 1029", temp_res)
+                            # print("BDD 1029", temp_res)
                         else:
                             temp_res = normalize(
                                 k1, [[succ1[0] + succ2[0], temp_res.weight, temp_res.node]]
                             )
 
                     temp_key_2_new_key2 = [
-                        list(range(bdd.node.key)),
-                        list(range(temp_res.node.key)),
+                    # odd -> len +1 even -> len +2
+                        list(range((bdd.node.key//2)*2+2)),
+                        list(range((temp_res.node.key//2)*2+2))
                     ]
                     temp_key_2_new_key2[0].append(-1)
                     temp_key_2_new_key2[1].append(-1)
-                    print("BDD 1048", temp_key_2_new_key2)
+
+                    print("BDD 1048", temp_key_2_new_key2, temp_res.key_2_index)
                     bdd = add2(bdd, temp_res, temp_key_2_new_key2)
 
         elif cont_order0 <= cont_order1:
@@ -1046,8 +1054,11 @@ def mul2(bdd1, bdd2, key_2_new_key):
                 the_successor.append([succ2[0], temp_res.weight, temp_res.node])
                 bdd = normalize(key_2_new_key[1][k2], the_successor)
 
+        bdd.show()
+        print("BDD 1052", bdd.key_2_index)
+        
         insert_2_computed_table(["*", bdd1, bdd2, temp_key_2_new_key], bdd)
-        print("BDD 1025", bdd)
+        
     bdd.weight = bdd.weight * weig
     bdd1.weight = w1
     bdd2.weight = w2
@@ -1073,7 +1084,7 @@ def add2(bdd1, bdd2, key_2_new_key):
     temp_key_2_new_key.append(tuple([k for k in key_2_new_key[1]]))
 
     res = find_computed_table(["+", bdd1, bdd2, temp_key_2_new_key])
-
+    print ("BDD 1080",k1, k2)
     if not res:
         the_successor = []
         cont_order0 = key_2_new_key[0][k1]
@@ -1148,7 +1159,7 @@ def add2(bdd1, bdd2, key_2_new_key):
 
         res = normalize(the_key, the_successor)
         insert_2_computed_table(["+", bdd1, bdd2, temp_key_2_new_key], res)
-        print("BDD 1106", res)
+        # print("BDD 1106", res)
 
     return res
 
