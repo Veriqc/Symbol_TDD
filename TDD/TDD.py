@@ -17,6 +17,7 @@ add_hit_time=0
 cont_find_time=0
 cont_hit_time=0
 epi=1e-10
+tdd_list = []
 
 class Index:
     """The index, here idx is used when there is a hyperedge"""
@@ -772,6 +773,8 @@ def np_2_tdd(U,order=[],key_width=True):
     
 def cont(tdd1,tdd2):
     # find out which variables to output (cont) / keep (out)
+    global tdd_list
+    tdd_list.append([tdd1.self_copy(),tdd2.self_copy()])
     
     var_cont=[var for var in tdd1.index_set if var in tdd2.index_set] # use list comprehension to get the common variables in both TDD objects
     var_out1=[var for var in tdd1.index_set if not var in var_cont] # use list comprehension to get the unique variables in tdd1
@@ -829,17 +832,25 @@ def cont(tdd1,tdd2):
     tdd.index_2_key=idx_2_key # set the index attribute of the output TDD object to be a dictionary mapping indices to keys
     tdd.key_2_index=key_2_idx # set the key attribute of the output TDD object to be a dictionary mapping
     key_width=dict()
-    for k1 in range(len(key_2_new_key[0])):
-        if not key_2_new_key[0][k1]=='c' and not key_2_new_key[0][k1] ==-1:
-            key_width[key_2_new_key[0][k1]]=tdd1.key_width[k1]
-    for k2 in range(len(key_2_new_key[1])):
-        if not key_2_new_key[1][k2]=='c' and not key_2_new_key[1][k2] ==-1:
-            key_width[key_2_new_key[1][k2]]=tdd2.key_width[k2]             
+    # for k1 in range(len(key_2_new_key[0])):
+    #     if not key_2_new_key[0][k1]=='c' and not key_2_new_key[0][k1] ==-1:
+    #         key_width[key_2_new_key[0][k1]]=tdd1.key_width[k1]
+    # for k2 in range(len(key_2_new_key[1])):
+    #     if not key_2_new_key[1][k2]=='c' and not key_2_new_key[1][k2] ==-1:
+    #         key_width[key_2_new_key[1][k2]]=tdd2.key_width[k2]             
    
     tdd.key_width=key_width
-#     print(tdd1.key_width,tdd2.key_width,tdd.key_width)
+    tdd_list[-1].append(tdd)
+    print('--------------------------------------')
+    print (len(tdd_list))
     return tdd
-
+def get_tdd_list():
+    global tdd_list
+    
+    return tdd_list
+def empty_tdd_list():
+    global tdd_list
+    tdd_list=[]
 
 def mul_weight(weight1, weight2):
     res=weight1 * weight2
@@ -858,7 +869,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     w1=tdd1.weight
     w2=tdd2.weight
     
-    # print('TDD 854', k1, k2, key_2_new_key)
+    print('TDD 867', k1, k2, w1, w2)
     if k1==-1 and k2==-1:
         if w1==S_zero:
             tdd=TDD(tdd1.node)
@@ -974,6 +985,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
 #     tdd.weight=simplify(tdd.weight)
     if tdd.weight==S_zero:
         tdd.node=Find_Or_Add_Unique_table(-1)
+    print('TDD 983', tdd.node.key, tdd.weight)
     return tdd
     
 def Slicing(tdd,x,c):

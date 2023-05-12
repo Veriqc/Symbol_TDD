@@ -701,8 +701,8 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
     
     # TODO: from min_degree_dict to set a key_2_index (not yet)
 
-    node1_index_degree = {key_2_new_key[0][k]:(k, v) for k, v in bdd1.node.index_degree.items()}
-    node2_index_degree = {key_2_new_key[1][k]:(k, v) for k, v in bdd2.node.index_degree.items()}
+    node1_index_degree = {key_2_new_key[0][k]:(k, v, bdd1.key_2_index[k]) for k, v in bdd1.node.index_degree.items()}
+    node2_index_degree = {key_2_new_key[1][k]:(k, v, bdd2.key_2_index[k]) for k, v in bdd2.node.index_degree.items()}
 
     min_degree_dict = dict()
     min_degree_dict_local1 = dict()
@@ -733,10 +733,18 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
         a, b, c = res
         #There should add key_2_index to a,b,c
         if min_degree_dict == dict():
-            a.key_2_index = a.key_2_index = {-1:-1}
+            a.key_2_index = {-1:-1}
         else:
-            assert min_degree_dict == dict(),  "min_degree_dict is not empty dict()"
-            a.key_2_index = {-1:-2}
+            i = 0
+            temp_key_2_index = {-1:-1}
+            for key, degree in min_degree_dict.items():
+                is_cos = key % 2 == 0
+                if (i % 2) == 0 ^ is_cos:
+                    i += 1
+                temp_key_2_index[i] = node1_index_degree[key][2]
+                print('BDD 745',key, i)
+            a.key_2_index = temp_key_2_index
+
         #TODO: revise
         b.key_2_index = bdd1.key_2_index
         c.key_2_index = bdd2.key_2_index
@@ -749,12 +757,17 @@ def normalize_2_fun(bdd1, bdd2, key_2_new_key):
             c = reduce_degree(bdd2, min_degree_dict_local2)
 
             i = 0
+            temp_key_2_index = {-1:-1}
             for key, degree in min_degree_dict.items():
                 is_cos = key % 2 == 0
                 if (i % 2) == 0 ^ is_cos:
                     i += 1
                 a = normalize(i, [[degree, 1, a.node]])
-                print('BDD 748',key, i)
+                # local_key -> global_key -> global_index
+                
+                temp_key_2_index[i] = node1_index_degree[key][2]
+                print('BDD 769',key, i)
+            a.key_2_index = temp_key_2_index
             
 
         else:
