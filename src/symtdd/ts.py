@@ -113,7 +113,7 @@ class Tensor:
         return Counter(self.indices)
     
     @classmethod
-    def contract_inner(cls, ts1, ts2, out_indices, intersect_indices, union_indices):
+    def contract_inner(cls, ts1, ts2, out_indices, union_indices, intersect_indices):
         # out_int_indices = out_indices
         # We still use idx_2_int to avoid number limit of indice from either numpy or opt_einsum
         
@@ -167,7 +167,7 @@ class Tensor:
         log.debug("====Contract")
         log.debug("%s,%s->%s", self.indices, other.indices, out_indices)
 
-        tensor = self.contract_inner(self, other, out_indices, intersect_indices, union_indices)
+        tensor = self.contract_inner(self, other, out_indices, union_indices, intersect_indices)
 
         log.debug("Contract End====")
 

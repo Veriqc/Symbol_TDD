@@ -13,7 +13,7 @@ from .. import Tensor, TDD, Index, HyperIndex, TensorNetwork, IndexType, TensorT
 
 
 log = logging.getLogger(__name__)
-log.setLevel("DEBUG")
+log.setLevel("INFO")
 
 Diagonal_Gates = set([GateLib.HGate, GateLib.IGate, GateLib.PhaseGate,
                       GateLib.RZGate, GateLib.RZZGate, GateLib.SGate, GateLib.SdgGate,
@@ -95,7 +95,7 @@ def cir_2_tn(cir:QuantumCircuit, idxtype:IndexType, tstype:TensorType, wtype:TDD
         init_tensors = [Tensor(zero_state, (index,)) for index in current_indices]
 
     # Transform qiskit instructions to tensors
-    if wtype is TDDWeightType.NA:
+    if wtype is TDDWeightType.NA or wtype is TDDWeightType.COMPLEX:
         gate2data_func = gate_2_data_direct
     else:
         raise ValueError("Not implemented")
