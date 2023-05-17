@@ -255,9 +255,11 @@ def get_node_set(node,node_set=set()):
 '''get_weight 要改，現在的變成不唯一了'''
 def get_weight(sl):
     # Do it if sl has key_2_index property
-    if sl.key_2_index:
-        #hash a dict to a tuple
-        return (get_int_key(sl.weight), tuple([(k, v) for k, v in sl.key_2_index.items()]))
+    if hasattr(sl, "key_2_index"):
+        #hash a dict to a tuple 
+        #p.s. add this will cause a problem about the simple circuit
+        return (get_int_key(sl.weight), tuple(sorted([(k, v) for k, v in sl.key_2_index.items()], key=lambda x: x[0]) ))
+        # return (get_int_key(sl.weight), tuple([(k, v) for k, v in sl.key_2_index.items()] ))
     return (get_int_key(sl.weight),sl.node)
     
 
