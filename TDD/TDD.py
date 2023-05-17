@@ -254,8 +254,14 @@ def get_node_set(node,node_set=set()):
     return node_set
 '''get_weight 要改，現在的變成不唯一了'''
 def get_weight(sl):
-    # return (get_int_key(sl.weight),sl.node)
-    return (get_int_key(sl.weight),sl.node, hash(frozenset(sl.key_2_index.items())))
+    # Do it if sl has key_2_index property
+    if sl.key_2_index:
+        #hash a dict to a tuple
+        return (get_int_key(sl.weight), tuple([(k, v) for k, v in sl.key_2_index.items()]))
+    return (get_int_key(sl.weight),sl.node)
+    
+
+
 
 def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
     """To return a node if it already exist, creates a new node otherwise"""
