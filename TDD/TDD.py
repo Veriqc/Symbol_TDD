@@ -254,7 +254,8 @@ def get_node_set(node,node_set=set()):
     return node_set
 '''get_weight 要改，現在的變成不唯一了'''
 def get_weight(sl):
-    return (get_int_key(sl.weight),sl.node)
+    # return (get_int_key(sl.weight),sl.node)
+    return (get_int_key(sl.weight),sl.node, hash(frozenset(sl.key_2_index.items())))
 
 def Find_Or_Add_Unique_table(x,weigs=[],succ_nodes=[]):
     """To return a node if it already exist, creates a new node otherwise"""
@@ -918,6 +919,7 @@ def contract(tdd1,tdd2,key_2_new_key,cont_order,cont_num):
     
     tdd=find_computed_table(['*',tdd1,tdd2,temp_key_2_new_key,cont_num])
     if tdd:
+        print('TDD 921 hit cache')
 #         tdd.weight=simplify(tdd.weight*w1*w2)
         tdd.weight=mul_weight(tdd.weight,mul_weight(w1,w2))
         tdd1.weight=w1
@@ -1054,6 +1056,7 @@ def add(tdd1,tdd2):
             return res
         
     if find_computed_table(['+',tdd1,tdd2]):
+        print('TDD 1058 hit cache')
         return find_computed_table(['+',tdd1,tdd2])
     the_successors=[]
     if k1>k2:

@@ -223,7 +223,7 @@ def layout(node, dot=Digraph(), succ=[]):
                 )
     return dot
 
-
+@staticmethod
 def Ini_BDD(index_order=[]):
     """To initialize the unique_table,computed_table and set up a global index order"""
     global computed_table
@@ -924,6 +924,7 @@ def cont(mode, bdd1, bdd2):
 
     bdd.key_2_index = key_2_idx
 
+    print("BDD 927 \n   %s output:"%mode, bdd)
     return bdd
 
 
@@ -965,7 +966,7 @@ def mul2(bdd1, bdd2, key_2_new_key):
     bdd = find_computed_table(["*", bdd1, bdd2, temp_key_2_new_key])
 
     if not bdd:
-
+        
         """BDD2.node 為什麼要這樣？"""
         bdd = BDD(Node(-1), weight=0.0)
 
