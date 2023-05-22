@@ -46,7 +46,8 @@ def get_real_qubit_num(cir):
         q=max(q,max([qbit.index for qbit in gates[k][1]]))
     return q+1
 
-# def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
+#This is TrDD version 
+def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
     """return the dict that link every quantum gate to the corresponding index"""
    
     hyper_index=dict()
@@ -126,7 +127,6 @@ def get_real_qubit_num(cir):
             由於旋轉矩陣的三角函數為sin((coeff*theta+const)/2)，分數的角度不好處理，因此實際上是把theta/2當作一個變數。
             下方取出const與coeff，再求出新的表達式new_expr。
             '''
-
             # s=symbols(list(param_expr.parameters)[0].name.replace("[","").replace("]",""))
             # sp_expr=sympify(str(param_expr).replace("[","").replace("]",""))
             sym_str=param_expr.parameters.copy().pop().name
@@ -258,8 +258,8 @@ def get_real_qubit_num(cir):
 
     return tn,all_indexs
 
-
-def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
+# This is exp version
+# def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
     """return the dict that link every quantum gate to the corresponding index"""
    
     hyper_index=dict()
