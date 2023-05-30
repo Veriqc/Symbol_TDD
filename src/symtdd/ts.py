@@ -113,10 +113,11 @@ class Tensor:
         return Counter(self.indices)
     
     @classmethod
-    def contract_inner(cls, ts1, ts2, out_indices, union_indices, intersect_indices):
+    def contract_inner(cls, ts1, ts2, out_indices, intersect_indices):
         # out_int_indices = out_indices
         # We still use idx_2_int to avoid number limit of indice from either numpy or opt_einsum
         
+        union_indices = out_indices + intersect_indices
         idx_2_int = {v: i for i, v in enumerate(union_indices)}
         out_int_indices = tuple(map(idx_2_int.get, out_indices))
 
@@ -146,10 +147,9 @@ class Tensor:
         self_indices_set = self.index_set
         other_indices_set = other.index_set
 
-        intersect_indices = self_indices_set.intersection(other_indices_set)
-        union_indices = self_indices_set.union(other_indices_set)
+        intersect_indices = list(self_indices_set.intersection(other_indices_set))
 
-        out_indices = self_indices_set.symmetric_difference(other_indices_set) # = union - intersect
+        out_indices = list(self_indices_set.symmetric_difference(other_indices_set)) # = union - intersect
 
         if index_counter is not None:
             # Handle hyperindex contraction
@@ -159,7 +159,7 @@ class Tensor:
             for index in intersect_indices:
                 count = self_counter[index] + other_counter[index]
                 if count != index_counter[index]:
-                    out_indices.add(index)
+                    out_indices.append(index)
                     count -= 1
                 index_counter[index] -= count
 
@@ -167,7 +167,7 @@ class Tensor:
         log.debug("====Contract")
         log.debug("%s,%s->%s", self.indices, other.indices, out_indices)
 
-        tensor = self.contract_inner(self, other, out_indices, union_indices, intersect_indices)
+        tensor = self.contract_inner(self, other, out_indices, intersect_indices)
 
         log.debug("Contract End====")
 

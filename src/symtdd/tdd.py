@@ -19,12 +19,12 @@ class TDD(Tensor, DDBase):
     compute_table = {}
     terminal = Node.terminal()
 
-    def __init__(self, tensor: Tensor, edge: Edge) -> None:
+    def __init__(self, edge: Edge, indices=(), name='') -> None:
         # self.data = tensor.data
         self.root_edge = edge
         # TODO: unify key_2_idx (dict) or indices (list)
-        self.indices = tensor.indices
-        self.name = tensor.name
+        self.indices = indices
+        self.name = name
 
     def __str__(self) -> str:
         return f"TDD {self.name}: indices {self.str_hyprindices}"
@@ -33,9 +33,25 @@ class TDD(Tensor, DDBase):
     def key_2_idx(self):
         return self.indices
     
+    @property
+    def is_trivial(self) -> bool:
+        return self.root_edge.is_terminated
+    
     @classmethod
-    def contract_inner(cls, tdd1, tdd2, out_indices, union_indices, intersect_indices):
-        raise ValueError("Not implemented")
+    def contract_inner(cls, f: TDD, g: TDD, out_indices, intersect_indices):
+        raise ValueError("Not implemented yet")
+        if len(intersect_indices) == 0:
+            return cls.mul(f, g, out_indices)
+        
+        x = intersect_indices[0]
+        f0 = f.slice(x, 0)
+        f1 = f.slice(x, 1)
+        g0 = g.slice(x, 0)
+        g1 = g.slice(x, 1)
+        l = cls.contract_inner(f0, g0, out_indices, union_indices, intersect_indices[1:])
+        r = cls.contract_inner(f1, g1, out_indices, union_indices, intersect_indices[1:])
+        return cls.add(l, r, out_indices)
+
 
     @classmethod
     def from_tensor(cls, tensor: Tensor, wtype: TDDWeightType) -> Self:
@@ -53,4 +69,4 @@ class TDD(Tensor, DDBase):
                 
         edge = np_2_tdd_recur(tensor.data, 0)
         
-        return cls(tensor, edge)
+        return cls(edge, tensor.indices, tensor.name)

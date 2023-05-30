@@ -55,6 +55,13 @@ class EdgeBase():
     def draw(self, dot: IndirectDigraph, src_name: str, color: str="blue") -> None:
         dot.edge(src_name, self.v.name, color=color, label=str(self.w))
 
+    @property
+    def is_terminated(self) -> bool:
+        return self.v.is_terminal
+
+    # def copy(self) -> Self:
+    #     return type(self)(self.w, self.v)
+
 
 class DDBase():
     def __init__(self, root_edge: EdgeBase, key_2_idx: dict[int, IndexBase] | list[IndexBase]) -> None:
