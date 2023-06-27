@@ -26,15 +26,47 @@ class Node:
         self.key = key
         self.successor=[]#the element should be in this form [degree,weight,node]
         self.index_degree=dict()
-        self.expr = None
         self.value=dict()
         self.succ_num=2
+    @property
+    def expr(self):
+        if self.key == -1:
+            return 1 + 0j
 
+        def get_numbers(s):
+            import re
+
+            # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
+            numbers = re.findall("\d+", s)
+            return int(numbers[0])
+        
+        print ('BDD 64',self.key)
+        param_expr = self.key
+        print ('BDD 66',  param_expr)
+        sym_str = (
+            param_expr.replace("sin(", "")
+            .replace("cos(", "")
+            .replace("[", "")
+            .replace("])", "")
+            .replace(str(get_numbers(param_expr)), "")
+        )
+
+        sym_base = IndexedBase(sym_str)
+
+        sp_expr = sympify(str(param_expr), locals={sym_str: sym_base})
+
+        res = 0
+        for succ in self.successor:
+            res += nsimplify(succ[1] * sp_expr ** succ[0], tolerance=1e-3) * succ[
+                2
+            ].expr
+        self._expr = res
+        return res
 class BDD:
     def __init__(self,node):
         """BDD"""
         self._weight=1
-
+        self._expr = None
         if isinstance(node,Node):
             self.node=node
         else:
@@ -98,23 +130,37 @@ class BDD:
     def self_normalize(self, g):
         return normalize_2_fun(g,self)
     
+    # def expr(self):
+    #     value=[self.weight.real,self.weight.imag]
+    #     for i in range(2):
+    #         if math.isclose(value[i] , int(value[i]), rel_tol = epi):
+    #             value[i] = int(value[i])
+    #         elif math.isclose(value[i] , int(value[i]+1), rel_tol = epi):
+    #             value[i] = int(value[i]+1)
+    #         elif math.isclose(value[i]+1 , int(value[i]+1), rel_tol = epi):
+    #             value[i] = int(value[i]+1)-1
+    #     value=value[0]+value[1]*I
+    #     if self.node.key==-1:
+    #         return value
+        
+    #     res=get_expr(self.node)
+        
+    #     return  value*res
+    @property
     def expr(self):
-        value=[self.weight.real,self.weight.imag]
-        for i in range(2):
-            if math.isclose(value[i] , int(value[i]), rel_tol = epi):
-                value[i] = int(value[i])
-            elif math.isclose(value[i] , int(value[i]+1), rel_tol = epi):
-                value[i] = int(value[i]+1)
-            elif math.isclose(value[i]+1 , int(value[i]+1), rel_tol = epi):
-                value[i] = int(value[i]+1)-1
-        value=value[0]+value[1]*I
-        if self.node.key==-1:
+        if self._expr:
+            return self._expr
+
+        value = np.round(self.weight, int(-np.log10(epi)))
+
+        if self.node.key == -1:
             return value
-        
-        res=get_expr(self.node)
-        
-        return  value*res
-    
+
+        res = self.node.expr
+        self._expr = value * res
+        return self._expr
+
+
     def get_value(self,val):
         res=get_value_node(self.node,val)
         return self.weight*res
@@ -124,7 +170,7 @@ class BDD:
         return self.weight*res    
     
     def __repr__(self):
-        return str(self.expr())
+        return str(self.expr)
     
 def layout(node,dot=Digraph(),succ=[]):
     col=['red','blue','black','green']
@@ -743,22 +789,22 @@ def normalize_2_fun(tdd1,tdd2):
     return [a,b,c]        
     
     
-def get_expr(node):
-    if node.key==-1:
-        return 1
-    if node.expr:
-        return node.expr
-    x=node.key
+# def get_expr(node):
+#     if node.key==-1:
+#         return 1
+#     if node.expr:
+#         return node.expr
+#     x=node.key
     
-    triangle_function=parse_expr(x)
+#     triangle_function=parse_expr(x)
 
-    res=0
-    for succ in node.successor:
-        res+=nsimplify(succ[1]*triangle_function**succ[0],tolerance=1e-3)*get_expr(succ[2])
-        # print('BDD 757 ',res)
+#     res=0
+#     for succ in node.successor:
+#         res+=nsimplify(succ[1]*triangle_function**succ[0],tolerance=1e-3)*get_expr(succ[2])
+#         # print('BDD 757 ',res)
 
-    node.expr=res
-    return res
+#     node.expr=res
+#     return res
 
 def get_value_node(node,val,the_key=None):
     if not the_key:

@@ -17,6 +17,8 @@ cont_find_time=0
 cont_hit_time=0
 epi=1e-10
 
+tdd_list = []
+
 class Index:
     """The index, here idx is used when there is a hyperedge"""
     def __init__(self,key,idx=0):
@@ -760,6 +762,8 @@ def np_2_tdd(U,order=[],key_width=True):
     
 def cont(tdd1,tdd2):
     #找出哪些要輸出(cont)/保留(out)
+    global tdd_list
+    tdd_list.append([tdd1.self_copy(),tdd2.self_copy()])
 
     var_cont=[var for var in tdd1.index_set if var in tdd2.index_set]
     var_out1=[var for var in tdd1.index_set if not var in var_cont]
@@ -816,8 +820,17 @@ def cont(tdd1,tdd2):
             key_width[key_2_new_key[1][k2]]=tdd2.key_width[k2]             
    
     tdd.key_width=key_width
-#     print(tdd1.key_width,tdd2.key_width,tdd.key_width)
+    tdd_list[-1].append(tdd)
+    print('--------------------------------------')
+    print (len(tdd_list))
     return tdd
+def get_tdd_list():
+    global tdd_list
+    
+    return tdd_list
+def empty_tdd_list():
+    global tdd_list
+    tdd_list=[]
 
 
 def mul_weight(w1,w2):
