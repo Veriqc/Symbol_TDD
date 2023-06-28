@@ -821,8 +821,8 @@ def cont(tdd1,tdd2):
    
     tdd.key_width=key_width
     tdd_list[-1].append(tdd)
-    print('--------------------------------------')
-    print (len(tdd_list))
+    # print('--------------------------------------')
+    # print (len(tdd_list))
     return tdd
 def get_tdd_list():
     global tdd_list

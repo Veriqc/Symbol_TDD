@@ -40,9 +40,9 @@ class Node:
             numbers = re.findall("\d+", s)
             return int(numbers[0])
         
-        print ('BDD 64',self.key)
+        # print ('BDD 64',self.key)
         param_expr = self.key
-        print ('BDD 66',  param_expr)
+        # print ('BDD 66',  param_expr)
         sym_str = (
             param_expr.replace("sin(", "")
             .replace("cos(", "")
