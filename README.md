@@ -1,7 +1,9 @@
 # A-Tensor-Network-Based-Decision-Diagram
 ## Overview
-Decision diagrams have been used in simulation and equivalence checking of quantum circuits. Inspired by the efficienvy and flexibility of Tensor Networks. A tensor network-based decision diagram has been proposed in https://arxiv.org/abs/2009.02618. This repository gives a proof-of-concept implementation of the Tensor Decision Diagram(TDD) using Python3. 
-Part of the benchmarks are coming from https://github.com/iic-jku/qmap/tree/master/examples.
+Decision diagrams have been used in simulation and equivalence checking of quantum circuits. Inspired by the efficienvy and flexibility of Tensor Networks. A tensor network-based decision diagram has been proposed in https://arxiv.org/abs/2009.02618. This repository gives a proof-of-concept implementation of the Tensor Decision Diagram(TDD) using Python3. Part of the benchmarks are coming from https://github.com/iic-jku/qmap/tree/master/examples.
+###  Symbolic Tensor Decision Diagrams (symTDDs)
+Extending TDDs with symbolic (tensor) weights makes it possible to leverage the power of symbolic logic in a
+systematic way. This work formally presents the symbolic tensor decision diagrams (or simply symTDDs) for symbolically executing and representing a quantum circuit, establishes the canonicity, and then demonstrates the efficiency of symTDDs in the simulation and verification. SymTDD has been proposed in https://arxiv.org/abs/2308.00440.
 
 ## Dependencies
 In order to use this package, you are expected to first install the fllowing packages: numpy, networkx, qiskit and graphviz. The data type of numpy is used to defined the data of a tensor in our package. Networkx will be used as part of a optimizer in this package. Qiskit is used for coping with Quantum Circuits and Graphviz is used for showing the graph of a TDD.
@@ -72,7 +74,19 @@ If the final TDD represent a quantum state, you can use the following instructio
     print(tdd.measure())
     print(tdd.sampling(10))
     print(tdd.get_amplitude([0]*n))
-    
+
+### symTDD
+
+    from TDD.simlation import SymTDD_simulation
+    from qiskit import QuantumCircuit
+    cir = QuantumCircuit(2)
+    cir.x(0)
+    cir.draw('mpl')
+
+    tdd, output_dict = SymTDD_simulation(cir)
+    print(output_dict)
+    tdd.show()
+
 ### Optimizers
 There are currently three optimizers can be used for contracting a Tensor Network.
 
