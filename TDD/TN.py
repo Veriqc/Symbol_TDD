@@ -93,13 +93,121 @@ class TensorNetwork:
                  
             return tdd,max_node_num   
 
+        def index_2_str(index):
+            return (
+                index.key
+            )  # + '_' + str(index.idx) if index.key[0] == 'x' else index.key
+
+        if optimizer == "opt_einsum":
+            import opt_einsum as oe
+
+            indices = {
+                index_2_str(index)
+                for tensor in self.tensors
+                for index in tensor.index_set
+            }
+
+            index_id_dict = dict(zip(indices, range(len(indices))))
+
+            # print("index_id_dict:", index_id_dict)
+
+            ts_index_seq = [
+                (
+                    tensor.data,
+                    [index_id_dict[index_2_str(index)] for index in tensor.index_set],
+                )
+                for tensor in self.tensors
+            ]
+            ts_index_flat_seq = sum(ts_index_seq, ())
+
+            output_index_ids = [
+                index_id_dict[index] for index in indices if index[0] == "y"
+            ]
+
+            # print("ts index:", dict(enumerate(ts_index_flat_seq[1::2])))
+            # print("output:", output_index_ids)
+
+            path, path_info = oe.contract_path(*ts_index_flat_seq, output_index_ids)
+
+            # print(path, path_info)
+
+            return self.tdds_contract_by_path(path, max_node, max_node_num)
+
+        if optimizer == "cotengra":
+            # TODO: we can further switch to cotengra by given `inputs, output, size_dict`
+            import cotengra as ctg
+
+            opt = ctg.HyperOptimizer()
+
+            indices = {
+                index_2_str(index)
+                for tensor in self.tensors
+                for index in tensor.index_set
+            }
+
+            index_id_dict = dict(zip(indices, range(len(indices))))
+
+            inputs = [
+                tuple(index_id_dict[index_2_str(index)] for index in tensor.index_set)
+                for tensor in self.tensors
+            ]
+
+            output = [index_id_dict[index] for index in indices if index[0] == "y"]
+
+            size_dict = {
+                index_id_dict[index_2_str(index)]: size
+                for tensor in self.tensors
+                for index, size in zip(tensor.index_set, tensor.data.shape)
+            }
+
+            tree = opt.search(inputs, output, size_dict)
+            path = tree.get_path()
+
+            return self.tdds_contract_by_path(path, max_node, max_node_num)
+
         for ts in self.tensors:
-            temp_tdd=ts.tdd()
-            tdd=cont(tdd,temp_tdd)
+            temp_tdd = ts.tdd()
+            tdd = cont(tdd, temp_tdd)
             if max_node:
-                max_node_num=max(max_node_num,tdd.node_number())
-             
-        return tdd,max_node_num
+                max_node_num = max(max_node_num, tdd.node_number())
+
+        return tdd, max_node_num
+
+    def get_index_set(self):
+        for ts in self.tensors:
+            temp_index = [idx.key for idx in ts.index_set]
+            for idx in temp_index:
+                self.index_set.add(idx)
+                if not idx in self.index_2_tensor:
+                    self.index_2_tensor[idx] = set()
+                self.index_2_tensor[idx].add(ts)
+
+    def tdds_contract_by_path(self, path, max_node, max_node_num):
+        _tdds = [ts.tdd() for ts in self.tensors]
+        for ts1, ts2 in path:
+            # print('contract:', ts1, ts2)
+            tmp_tdd = cont(_tdds[ts1], _tdds[ts2])
+
+            if max_node:
+                max_node_num = max(max_node_num, tmp_tdd.node_number())
+
+            # TODO: use heapq to do in O(logn)?
+            # https://stackoverflow.com/a/10163422
+            _tdds = [_tdd for i, _tdd in enumerate(_tdds) if i not in [ts1, ts2]]
+
+            # simple remove?
+            # bug: __eq__ of tdd does not unique?
+            # del_vals = [_tdds[ts1], _tdds[ts2]]
+            # [_tdds.remove(element) for element in del_vals]
+            _tdds.append(tmp_tdd)
+
+            # print("# of remain ts:", len(_tdds))
+            # print("remain indices:", [[index_2_str(index) for index in _tdd.index_set] for _tdd in _tdds ])
+
+        assert len(_tdds) == 1
+        return _tdds[0], max_node_num
+
+
 
     def get_index_set(self):
         for ts in self.tensors:

@@ -127,24 +127,27 @@ def cir_2_tn(cir,input_s=[],output_s=[],cong=False):
             由於旋轉矩陣的三角函數為sin((coeff*theta+const)/2)，分數的角度不好處理，因此實際上是把theta/2當作一個變數。
             下方取出const與coeff，再求出新的表達式new_expr。
             '''
-            # s=symbols(list(param_expr.parameters)[0].name.replace("[","").replace("]",""))
-            # sp_expr=sympify(str(param_expr).replace("[","").replace("]",""))
-            sym_str=param_expr.parameters.copy().pop().name
-            def get_numbers(s):
-                import re
-                # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
-                numbers = re.findall("\d+", s)
-                return int(numbers[0])
-            if '[' in sym_str: #利用IndexedBase去對應qiskit生成的Parameter(θ[0])的變數
-                sym_str=sym_str.replace("[","").replace("]","")
-                sym_order=get_numbers(sym_str)
-                sym_str=sym_str.replace(str(sym_order),"")
-                sym_base = IndexedBase(sym_str)
-                s=sym_base[sym_order]
-                sp_expr=sympify(str(param_expr), locals={sym_str: sym_base})
-            else:
-                s=Symbol(sym_str)
-                sp_expr=sympify(str(param_expr))
+            s=symbols(list(param_expr.parameters)[0].name.replace("[","").replace("]",""))
+            sp_expr=sympify(str(param_expr).replace("[","").replace("]",""))
+            #     print(param_expr, type(param_expr), str(param_expr))
+            #     # sym_str=param_expr.parameters.copy().pop().name
+            #     sym_str=str(param_expr)
+            # # sym_str=param_expr.name
+            # def get_numbers(s):
+            #     import re
+            #     # 使用正則表達式找到所有匹配"\d+"的子串，即連續的一個或多個數字
+            #     numbers = re.findall("\d+", s)
+            #     return int(numbers[0])
+            # if '[' in sym_str: #利用IndexedBase去對應qiskit生成的Parameter(θ[0])的變數
+            #     sym_str=sym_str.replace("[","").replace("]","")
+            #     sym_order=get_numbers(sym_str)
+            #     sym_str=sym_str.replace(str(sym_order),"")
+            #     sym_base = IndexedBase(sym_str)
+            #     s=sym_base[sym_order]
+            #     sp_expr=sympify(str(param_expr), locals={sym_str: sym_base})
+            # else:
+            #     s=Symbol(sym_str)
+            #     sp_expr=sympify(str(param_expr))
 
 
             #取得旋轉角度所加的常數
